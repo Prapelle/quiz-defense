@@ -43,6 +43,7 @@ export const GAME_SETTINGS = {
   enemySpawnMs: 5200,
   maxEnemies: 14,
   questionCooldownMs: 900,
+  questionIntervalMs: 15000,
   gridRows: 5,
   gridCols: 9,
   canvasWidth: 1280,
@@ -54,7 +55,7 @@ export const GAME_SETTINGS = {
 } as const;
 
 export const PLANTS: PlantConfig[] = [
-  { id: 'kumarn', name: 'กุมารวิญญาณ', emoji: '🧒🏻', cost: 50, unlockAtStreak: 0, hp: 45, role: 'สร้างพลังอาคม', description: 'สร้างพลังอาคม +20 ทุก 7 วินาที', attackDamage: 0, attackRange: 0, attackMs: 0, manaEveryMs: 7000, manaGain: 20 },
+  { id: 'kumarn', name: 'กุมารวิญญาณ', emoji: '🧒🏻', cost: 50, unlockAtStreak: 0, hp: 45, role: 'สร้างพลังอาคม', description: 'สร้างพลังอาคม +10 ทุก 5 วินาที', attackDamage: 0, attackRange: 0, attackMs: 0, manaEveryMs: 5000, manaGain: 10 },
   { id: 'lotus', name: 'ดอกบัวอาคม', emoji: '🪷', cost: 75, unlockAtStreak: 0, hp: 40, role: 'โจมตีระยะไกล', description: 'ยิงประกายอาคมแรงขึ้นจากระยะไกลในเลนเดียวกัน', attackDamage: 28, attackRange: 700, attackMs: 1800 },
   { id: 'bindLotus', name: 'บัวสะกดวิญญาณ', emoji: '🪻', cost: 100, unlockAtStreak: 2, hp: 45, role: 'ลดความเร็ว', description: 'สร้างความเสียหายเล็กน้อยพร้อมสะกดผีให้ช้าลง', attackDamage: 10, attackRange: 680, attackMs: 2200, slowMs: 2800 },
   { id: 'ward', name: 'เสาหลักอาคม', emoji: '🗿', cost: 125, unlockAtStreak: 3, hp: 180, role: 'ป้องกัน', description: 'รับการโจมตีแทนแนวหลัง', attackDamage: 0, attackRange: 0, attackMs: 0 },
