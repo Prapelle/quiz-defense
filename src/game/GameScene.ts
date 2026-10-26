@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { GAME_SETTINGS, GHOSTS, PLANTS, STAGES, type GhostConfig, type PlantConfig, type PlantId, type GhostId } from './config';
 import { CHARACTER_ATLAS_DATA_URL, CHARACTER_FRAME_SIZE, CHARACTER_FRAMES } from '../data/characterAtlas';
-import { resolveQuizAnswer, targetEnemiesForStage } from './rules';
+import { resolvePlantUnlocks, resolveQuizAnswer, targetEnemiesForStage } from './rules';
 import type { GameSettings } from '../types';
 
 export interface GameStats {
@@ -253,9 +253,12 @@ export class GameScene extends Phaser.Scene {
     const resolution = resolveQuizAnswer(data.correct, this.streak, data.reward, data.streakEvery, data.streakBonus);
     this.streak = resolution.nextStreak;
     if (data.correct) {
-      const newlyUnlocked = PLANTS.filter((plant) => plant.unlockAtStreak > 0 && plant.unlockAtStreak <= this.streak && !this.unlockedPlants.has(plant.id));
-      newlyUnlocked.forEach((plant) => this.unlockedPlants.add(plant.id));
-      if (newlyUnlocked.length) this.game.events.emit('toast', `ปลดล็อกแล้ว: ${newlyUnlocked.map((plant) => plant.name).join('、')}!`);
+      const unlocks = resolvePlantUnlocks(this.streak, [...this.unlockedPlants]);
+      this.unlockedPlants = new Set(unlocks.unlockedPlants);
+      if (unlocks.newlyUnlocked.length) {
+        const names = unlocks.newlyUnlocked.map((id) => PLANTS.find((plant) => plant.id === id)?.name ?? id);
+        this.game.events.emit('toast', `ปลดล็อกแล้ว: ${names.join('、')}!`);
+      }
       this.mana += resolution.manaReward;
       this.score += resolution.scoreReward;
       this.game.events.emit('toast', `ตอบถูก! +${resolution.manaReward} พลังอาคม${resolution.bonus ? ' (โบนัสตอบต่อเนื่อง)' : ''}`);
