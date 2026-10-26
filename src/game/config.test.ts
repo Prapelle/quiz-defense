@@ -19,7 +19,7 @@ describe('game configuration', () => {
   });
 
   it('increases ghost attack damage by type', () => {
-    expect(GHOSTS.map((ghost) => ghost.damage)).toEqual([5, 9, 15]);
+    expect(GHOSTS.slice(0, 3).map((ghost) => ghost.damage)).toEqual([5, 9, 15]);
   });
 
   it('contains five distinct player units with positive cost and health', () => {
@@ -67,12 +67,19 @@ describe('game configuration', () => {
     expect(PLANTS.find((plant) => plant.id === 'fireLotus')?.unlockAtStreak).toBe(4);
   });
 
-  it('has three enemy types and makes the preta the tankiest and slowest', () => {
-    expect(GHOSTS).toHaveLength(3);
+  it('has ten distinct enemy types and makes the preta the tankiest and slowest', () => {
+    expect(GHOSTS).toHaveLength(10);
+    expect(new Set(GHOSTS.map((ghost) => ghost.id)).size).toBe(10);
+    expect(GHOSTS.every((ghost) => ghost.emoji && ghost.description && ghost.hp > 0 && ghost.speed > 0 && ghost.damage > 0)).toBe(true);
     const preta = GHOSTS.find((ghost) => ghost.id === 'pret')!;
     expect(preta.hp).toBeGreaterThan(Math.max(...GHOSTS.filter((ghost) => ghost.id !== 'pret').map((ghost) => ghost.hp)));
     expect(preta.speed).toBeLessThan(Math.min(...GHOSTS.filter((ghost) => ghost.id !== 'pret').map((ghost) => ghost.speed)));
-    expect(GHOSTS.some((ghost) => ghost.flying)).toBe(true);
+    expect(GHOSTS.filter((ghost) => ghost.flying).map((ghost) => ghost.id)).toEqual(['krasue', 'krahang']);
+    expect(GHOSTS.find((ghost) => ghost.id === 'pop')?.enrageBelowHpRatio).toBe(0.5);
+    expect(GHOSTS.find((ghost) => ghost.id === 'phong')?.poisonDamage).toBeGreaterThan(0);
+    expect(GHOSTS.find((ghost) => ghost.id === 'maemai')?.speedAuraRadius).toBeGreaterThan(0);
+    expect(GHOSTS.find((ghost) => ghost.id === 'taihong')?.deathBurstDamage).toBeGreaterThan(0);
+    expect(GHOSTS.find((ghost) => ghost.id === 'khomot')?.damageReduction).toBe(0.25);
   });
 
   it('keeps five lanes and an increasing three-stage difficulty curve', () => {
@@ -81,6 +88,8 @@ describe('game configuration', () => {
     expect(STAGES[0].enemies).toBeLessThan(STAGES[1].enemies);
     expect(STAGES[1].enemies).toBeLessThan(STAGES[2].enemies);
     expect(STAGES[0].spawnMs).toBeGreaterThan(STAGES[2].spawnMs);
+    expect(STAGES[1].allowedGhosts).toHaveLength(5);
+    expect(new Set(STAGES[2].allowedGhosts).size).toBe(10);
     const knownGhosts = new Set(GHOSTS.map((ghost) => ghost.id));
     for (const stage of STAGES) {
       expect(stage.allowedGhosts.length).toBeGreaterThan(0);
