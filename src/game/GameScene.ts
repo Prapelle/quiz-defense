@@ -170,7 +170,7 @@ export class GameScene extends Phaser.Scene {
     const y = 154 + row * 83;
     const ghostFrame = GHOST_FRAMES[id];
     const sprite: Phaser.GameObjects.Image | Phaser.GameObjects.Text = this.textures.exists('ghost-atlas')
-      ? this.add.image(x, y, 'ghost-atlas', ghostFrame).setDisplaySize(config.id === 'pret' ? 68 : 58, config.id === 'khomot' ? 62 : 58).setDepth(6)
+      ? this.add.image(x, y, 'ghost-atlas', ghostFrame).setDisplaySize(config.id === 'pret' ? 68 : 58, config.id === 'pret' ? 62 : 58).setDepth(6)
       : this.add.text(x, y, config.emoji, { fontFamily: 'Apple Color Emoji, Segoe UI Emoji, sans-serif', fontSize: `${config.size}px`, stroke: '#1c1831', strokeThickness: 3 }).setOrigin(0.5).setDepth(6);
     sprite.setData('hpBar', this.add.graphics().setDepth(7));
     this.ghosts.push({ config, row, x, y, hp: config.hp, sprite, slowUntil: 0, lastAttack: 0 });
