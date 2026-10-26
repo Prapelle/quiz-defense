@@ -16,7 +16,7 @@ export interface GameStats {
   stageName: string;
   status: 'playing' | 'won' | 'lost';
 }
-interface PlantUnit { config: PlantConfig; row: number; col: number; x: number; y: number; hp: number; sprite: Phaser.GameObjects.Image | Phaser.GameObjects.Text; lastAction: number; explodeAt?: number; }
+interface PlantUnit { config: PlantConfig; row: number; col: number; x: number; y: number; hp: number; sprite: Phaser.GameObjects.Image | Phaser.GameObjects.Text | Phaser.GameObjects.Graphics; lastAction: number; explodeAt?: number; }
 interface GhostUnit { config: GhostConfig; row: number; x: number; y: number; hp: number; sprite: Phaser.GameObjects.Image | Phaser.GameObjects.Text; slowUntil: number; lastAttack: number; }
 interface Projectile { circle: Phaser.GameObjects.Arc; x: number; y: number; target: GhostUnit; speed: number; damage: number; splash: number; slowMs?: number; }
 
@@ -148,9 +148,28 @@ export class GameScene extends Phaser.Scene {
     this.mana -= config.cost;
     const px = 208 + col * 104;
     const py = 154 + row * 83;
-    const sprite: Phaser.GameObjects.Image | Phaser.GameObjects.Text = this.textures.exists('character-atlas')
-      ? this.add.image(px, py, 'character-atlas', CHARACTER_FRAMES[config.id]).setDisplaySize(config.id === 'ward' ? 60 : 56, 56).setDepth(5)
-      : this.add.text(px, py, config.emoji, { fontFamily: 'Apple Color Emoji, Segoe UI Emoji, sans-serif', fontSize: config.id === 'ward' ? '48px' : '42px', stroke: '#112236', strokeThickness: 2 }).setOrigin(0.5).setDepth(5);
+    let sprite: Phaser.GameObjects.Image | Phaser.GameObjects.Text | Phaser.GameObjects.Graphics;
+    if (config.id === 'fireLotus') {
+      // Earthen pot bomb with a tied red cloth, drawn locally so it works offline.
+      const pot = this.add.graphics().setDepth(5);
+      pot.fillStyle(0x7a3927, 1);
+      pot.fillEllipse(px, py + 7, 42, 44);
+      pot.fillStyle(0xb66a43, 1);
+      pot.fillEllipse(px, py + 2, 34, 34);
+      pot.fillStyle(0x5a2b22, 1);
+      pot.fillRoundedRect(px - 13, py - 20, 26, 9, 3);
+      pot.fillStyle(0xc93038, 1);
+      pot.fillRoundedRect(px - 17, py - 25, 34, 8, 3);
+      pot.fillTriangle(px + 9, py - 23, px + 25, py - 31, px + 19, py - 17);
+      pot.fillTriangle(px - 8, py - 23, px - 24, py - 31, px - 18, py - 17);
+      pot.lineStyle(2, 0xe9a16c, 0.9);
+      pot.strokeEllipse(px, py + 7, 42, 44);
+      sprite = pot;
+    } else {
+      sprite = this.textures.exists('character-atlas')
+        ? this.add.image(px, py, 'character-atlas', CHARACTER_FRAMES[config.id]).setDisplaySize(config.id === 'ward' ? 60 : 56, 56).setDepth(5)
+        : this.add.text(px, py, config.emoji, { fontFamily: 'Apple Color Emoji, Segoe UI Emoji, sans-serif', fontSize: config.id === 'ward' ? '48px' : '42px', stroke: '#112236', strokeThickness: 2 }).setOrigin(0.5).setDepth(5);
+    }
     const ring = this.add.graphics().lineStyle(2, 0xf9d983, 0.7).strokeCircle(px, py + 6, 29).setDepth(4);
     // Ring follows plant life without using remote art assets.
     sprite.setData('ring', ring);
