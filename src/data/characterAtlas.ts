@@ -13,11 +13,14 @@ export const CHARACTER_FRAMES = {
   pret: 7,
 } as const;
 
+export const CHARACTER_ATLAS_ROOT_STYLE = {
+  '--character-atlas': 'url(\"' + CHARACTER_ATLAS_DATA_URL + '\")',
+} as import('react').CSSProperties;
+
 export function spriteBackgroundStyle(frame: number, size: number): import('react').CSSProperties {
   const column = frame % 5;
   const row = Math.floor(frame / 5);
   return {
-    backgroundImage: 'url("' + CHARACTER_ATLAS_DATA_URL + '")',
     backgroundSize: String(size * 5) + 'px ' + String(size * 2) + 'px',
     backgroundPosition: '-' + String(column * size) + 'px -' + String(row * size) + 'px',
     backgroundRepeat: 'no-repeat',
