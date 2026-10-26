@@ -26,8 +26,8 @@ describe('game configuration', () => {
     expect(PLANTS.find((plant) => plant.id === 'fireLotus')?.unlockAtStreak).toBe(4);
   });
 
-  it('has three enemy types and makes the preta the tankiest and slowest', () => {
-    expect(GHOSTS).toHaveLength(3);
+  it('has four enemy types and makes the preta the tankiest and slowest', () => {
+    expect(GHOSTS).toHaveLength(4);
     const preta = GHOSTS.find((ghost) => ghost.id === 'pret')!;
     expect(preta.hp).toBeGreaterThan(Math.max(...GHOSTS.filter((ghost) => ghost.id !== 'pret').map((ghost) => ghost.hp)));
     expect(preta.speed).toBeLessThan(Math.min(...GHOSTS.filter((ghost) => ghost.id !== 'pret').map((ghost) => ghost.speed)));
