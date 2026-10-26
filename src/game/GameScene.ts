@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { GAME_SETTINGS, GHOSTS, PLANTS, STAGES, type GhostConfig, type PlantConfig, type PlantId, type GhostId } from './config';
 import { CHARACTER_ATLAS_DATA_URL, CHARACTER_FRAME_SIZE, CHARACTER_FRAMES } from '../data/characterAtlas';
+import { resolveQuizAnswer, targetEnemiesForStage } from './rules';
 import type { GameSettings } from '../types';
 
 export interface GameStats {
@@ -244,13 +245,13 @@ export class GameScene extends Phaser.Scene {
 
   private applyAnswer(data: { correct: boolean; reward: number; streakEvery: number; streakBonus: number }): void {
     if (this.status !== 'playing') return;
+    const resolution = resolveQuizAnswer(data.correct, this.streak, data.reward, data.streakEvery, data.streakBonus);
+    this.streak = resolution.nextStreak;
     if (data.correct) {
-      this.streak += 1;
-      const bonus = data.streakEvery > 0 && this.streak % data.streakEvery === 0 ? data.streakBonus : 0;
-      this.mana += data.reward + bonus; this.score += 10;
-      this.game.events.emit('toast', `ตอบถูก! +${data.reward + bonus} พลังอาคม${bonus ? ' (โบนัสตอบต่อเนื่อง)' : ''}`);
+      this.mana += resolution.manaReward;
+      this.score += resolution.scoreReward;
+      this.game.events.emit('toast', `ตอบถูก! +${resolution.manaReward} พลังอาคม${resolution.bonus ? ' (โบนัสตอบต่อเนื่อง)' : ''}`);
     } else {
-      this.streak = 0;
       this.game.events.emit('toast', 'ยังไม่ถูกนะ ลองอ่านเฉลยแล้วสู้ต่อได้เลย');
     }
     this.pushStats();
@@ -276,8 +277,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   private targetEnemies(): number {
-    const scale = this.stage === 1 ? 0.72 : this.stage === 2 ? 1 : 1.28;
-    return Math.max(5, Math.round(this.gameSettings.maxEnemies * scale));
+    return targetEnemiesForStage(this.stage, this.gameSettings.maxEnemies);
   }
 
   private getStats(): GameStats {
