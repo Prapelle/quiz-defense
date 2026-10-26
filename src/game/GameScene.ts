@@ -370,8 +370,8 @@ export class GameScene extends Phaser.Scene {
         this.health = Math.max(0, this.health);
         const hpBar = ghost.sprite.getData('hpBar') as Phaser.GameObjects.Graphics | undefined;
         hpBar?.destroy();
-      (ghost.sprite.getData('bossName') as Phaser.GameObjects.Text | undefined)?.destroy();
-      ghost.sprite.destroy();
+        (ghost.sprite.getData('bossName') as Phaser.GameObjects.Text | undefined)?.destroy();
+        ghost.sprite.destroy();
         this.ghosts = this.ghosts.filter((g) => g !== ghost);
         this.game.events.emit('toast', `ผีผ่านฐาน! พลังชีวิตเหลือ ${this.health}`);
         this.pushStats();
@@ -507,7 +507,7 @@ export class GameScene extends Phaser.Scene {
 
   private resetGame(stage: number): void {
     for (const p of this.plants) { const ring = p.sprite.getData('ring') as Phaser.GameObjects.Graphics | undefined; const hpBar = p.sprite.getData('hpBar') as Phaser.GameObjects.Graphics | undefined; ring?.destroy(); hpBar?.destroy(); p.sprite.destroy(); }
-    for (const g of this.ghosts) { g.sprite.destroy(); (g.sprite.getData('hpBar') as Phaser.GameObjects.Graphics | undefined)?.destroy(); }
+    for (const g of this.ghosts) { g.sprite.destroy(); (g.sprite.getData('hpBar') as Phaser.GameObjects.Graphics | undefined)?.destroy(); (g.sprite.getData('bossName') as Phaser.GameObjects.Text | undefined)?.destroy(); }
     for (const p of this.projectiles) p.circle.destroy();
     this.plants = []; this.ghosts = []; this.projectiles = [];
     this.stage = Math.max(1, Math.min(STAGES.length, Math.floor(stage)));
