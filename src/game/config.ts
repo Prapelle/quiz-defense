@@ -15,6 +15,7 @@ export interface PlantConfig {
   attackRange: number;
   attackMs: number;
   manaEveryMs?: number;
+  manaGain?: number;
   slowMs?: number;
   splashRadius?: number;
 }
@@ -52,11 +53,11 @@ export const GAME_SETTINGS = {
 } as const;
 
 export const PLANTS: PlantConfig[] = [
-  { id: 'kumarn', name: 'กุมารวิญญาณ', emoji: '🧒🏻', cost: 50, unlockAtStreak: 0, hp: 45, role: 'สร้างพลังอาคม', description: 'สร้างพลังอาคม +20 ทุก 7 วินาที', attackDamage: 0, attackRange: 0, attackMs: 0, manaEveryMs: 7000 },
-  { id: 'lotus', name: 'ดอกบัวอาคม', emoji: '🪷', cost: 75, unlockAtStreak: 0, hp: 40, role: 'โจมตีระยะไกล', description: 'ยิงประกายอาคมไปยังผีในเลนเดียวกัน', attackDamage: 24, attackRange: 700, attackMs: 1700 },
-  { id: 'bindLotus', name: 'บัวสะกดวิญญาณ', emoji: '🪻', cost: 100, unlockAtStreak: 2, hp: 45, role: 'ลดความเร็ว', description: 'สะกดผีให้เคลื่อนที่ช้าลง', attackDamage: 8, attackRange: 680, attackMs: 2100, slowMs: 2400 },
+  { id: 'kumarn', name: 'กุมารวิญญาณ', emoji: '🧒🏻', cost: 50, unlockAtStreak: 0, hp: 45, role: 'สร้างพลังอาคม', description: 'สร้างพลังอาคม +20 ทุก 7 วินาที', attackDamage: 0, attackRange: 0, attackMs: 0, manaEveryMs: 7000, manaGain: 20 },
+  { id: 'lotus', name: 'ดอกบัวอาคม', emoji: '🪷', cost: 75, unlockAtStreak: 0, hp: 40, role: 'โจมตีระยะไกล', description: 'ยิงประกายอาคมแรงขึ้นจากระยะไกลในเลนเดียวกัน', attackDamage: 28, attackRange: 700, attackMs: 1800 },
+  { id: 'bindLotus', name: 'บัวสะกดวิญญาณ', emoji: '🪻', cost: 100, unlockAtStreak: 2, hp: 45, role: 'ลดความเร็ว', description: 'สร้างความเสียหายเล็กน้อยพร้อมสะกดผีให้ช้าลง', attackDamage: 10, attackRange: 680, attackMs: 2200, slowMs: 2800 },
   { id: 'ward', name: 'เสาหลักอาคม', emoji: '🗿', cost: 125, unlockAtStreak: 3, hp: 180, role: 'ป้องกัน', description: 'รับการโจมตีแทนแนวหลัง', attackDamage: 0, attackRange: 0, attackMs: 0 },
-  { id: 'fireLotus', name: 'ดอกบัวเพลิง', emoji: '🌺', cost: 150, unlockAtStreak: 4, hp: 42, role: 'โจมตีวงกว้าง', description: 'ระเบิดอาคมใส่ผีบริเวณใกล้เคียง', attackDamage: 42, attackRange: 420, attackMs: 2900, splashRadius: 105 },
+  { id: 'fireLotus', name: 'ดอกบัวเพลิง', emoji: '🌺', cost: 150, unlockAtStreak: 4, hp: 42, role: 'โจมตีวงกว้าง', description: 'ระเบิดอาคมแรงสูงใส่ผีหลายตัวที่อยู่ใกล้กัน', attackDamage: 48, attackRange: 420, attackMs: 3200, splashRadius: 105 },
 ];
 
 export const GHOSTS: GhostConfig[] = [
