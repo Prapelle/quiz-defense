@@ -56,8 +56,8 @@ describe('game configuration', () => {
   });
 
   it('defines increasing wave difficulty across stages', () => {
-    expect(STAGES.map((stage) => stage.waves.reduce((sum, count) => sum + count, 0))).toEqual([10, 14, 18]);
-    expect(STAGES[0].waveBreakMs).toBeGreaterThan(STAGES[2].waveBreakMs);
+    expect(STAGES.map((stage) => stage.waves.reduce((sum, count) => sum + count, 0))).toEqual([10, 15, 20, 25, 30, 35, 40, 45, 50]);
+    expect(STAGES[0].waveBreakMs).toBeGreaterThan(STAGES[8].waveBreakMs);
   });
 
   it('unlocks special plants only after the required correct-answer streak', () => {
@@ -82,14 +82,19 @@ describe('game configuration', () => {
     expect(GHOSTS.find((ghost) => ghost.id === 'khomot')?.damageReduction).toBe(0.25);
   });
 
-  it('keeps five lanes and an increasing three-stage difficulty curve', () => {
+  it('keeps five lanes and an increasing nine-stage difficulty curve', () => {
     expect(GAME_SETTINGS.gridRows).toBe(5);
-    expect(STAGES).toHaveLength(3);
+    expect(STAGES).toHaveLength(9);
     expect(STAGES[0].enemies).toBeLessThan(STAGES[1].enemies);
     expect(STAGES[1].enemies).toBeLessThan(STAGES[2].enemies);
     expect(STAGES[0].spawnMs).toBeGreaterThan(STAGES[2].spawnMs);
-    expect(STAGES[1].allowedGhosts).toHaveLength(5);
-    expect(new Set(STAGES[2].allowedGhosts).size).toBe(10);
+    expect(STAGES.map((stage) => stage.allowedGhosts.length)).toEqual([2, 4, 6, 8, 10, 10, 10, 10, 10]);
+    expect(STAGES[0].enemies).toBe(10);
+    expect(STAGES[8].enemies).toBe(50);
+    for (let index = 1; index < STAGES.length; index += 1) {
+      expect(STAGES[index].enemies - STAGES[index - 1].enemies).toBe(5);
+      expect(STAGES[index].allowedGhosts.slice(0, STAGES[index - 1].allowedGhosts.length)).toEqual(STAGES[index - 1].allowedGhosts);
+    }
     const knownGhosts = new Set(GHOSTS.map((ghost) => ghost.id));
     for (const stage of STAGES) {
       expect(stage.allowedGhosts.length).toBeGreaterThan(0);
