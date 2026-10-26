@@ -28,7 +28,7 @@ export default function App() {
   const [game, setGame] = useState<Phaser.Game | null>(null);
   const [selectedStage, setSelectedStage] = useState(1);
   const [selectedPlant, setSelectedPlant] = useState<PlantId>('lotus');
-  const [stats, setStats] = useState<GameStats>({ mana: 150, health: 5, score: 0, kills: 0, spawned: 0, target: 10, streak: 0, unlockedPlants: ['kumarn', 'lotus'], stageName: STAGES[0].name, status: 'playing' });
+  const [stats, setStats] = useState<GameStats>({ mana: 150, health: 5, score: 0, kills: 0, spawned: 0, target: 10, streak: 0, unlockedPlants: ['kumarn', 'lotus'], wave: 1, totalWaves: 3, waveWaiting: false, stageName: STAGES[0].name, status: 'playing' });
   const [currentQuestion, setCurrentQuestion] = useState<QuizQuestion | null>(null);
   const [questionAnswer, setQuestionAnswer] = useState<number | null>(null);
   const [questionModal, setQuestionModal] = useState(false);
