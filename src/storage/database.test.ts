@@ -15,7 +15,11 @@ const fixtureQuestion: QuizQuestion = {
   choices: ['4', '5', '6', '7'], answerIndex: 1, explanation: '2 + 3 = 5',
   subject: 'คณิตศาสตร์', grade: 'ป.2', difficulty: 'ง่าย',
 };
-const packageFixture = () => packageQuestions([{ ...fixtureSet, questionIds: [fixtureQuestion.id] }], [fixtureQuestion]);
+// Clone nested arrays so malformed-input tests never mutate the shared fixture.
+const packageFixture = () => packageQuestions(
+  [{ ...fixtureSet, questionIds: [...fixtureSet.questionIds] }],
+  [{ ...fixtureQuestion, choices: [...fixtureQuestion.choices] as QuizQuestion['choices'] }],
+);
 const saveFixture = (): GameSave => ({
   questions: [...DEFAULT_QUESTIONS], sets: [...DEFAULT_SETS], activeSetId: DEFAULT_SET_ID,
   progress: { score: 120, unlockedStage: 2, starsByStage: { '1': 3 }, gamesPlayed: 4, correctAnswers: 12, answeredQuestions: 16 },
