@@ -552,3 +552,55 @@ option { color: #f4f7fc; background: #101c31; }
 @media (orientation: portrait) and (max-width: 900px) {
   .game-board-panel > .plant-panel .plant-picker { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
+
+
+/* Character atlas sprites: all artwork is bundled in source for offline use. */
+.hero-kumarn { display: flex; align-items: flex-end; }
+.hero-kumarn .hero-character-sprite {
+  display: block;
+  width: 160px;
+  height: 160px;
+  flex: 0 0 160px;
+  filter: drop-shadow(0 10px 10px rgba(0, 0, 0, .42));
+}
+.plant-portrait {
+  display: block;
+  width: 46px;
+  height: 46px;
+  min-height: 46px;
+  flex: 0 0 46px;
+  background-repeat: no-repeat;
+  filter: drop-shadow(0 3px 4px rgba(0,0,0,.22));
+}
+.game-board-panel > .plant-panel .plant-portrait {
+  width: 48px;
+  height: 48px;
+  min-height: 48px;
+  flex-basis: 48px;
+}
+.ghost-mini .ghost-portrait {
+  display: block;
+  width: 38px;
+  height: 38px;
+  flex: 0 0 38px;
+  background-repeat: no-repeat;
+  filter: drop-shadow(0 2px 4px rgba(0,0,0,.22));
+}
+.battle-sidebar .ghost-mini .ghost-portrait {
+  width: 42px;
+  height: 42px;
+  flex-basis: 42px;
+}
+@media (max-width: 760px) {
+  .hero-kumarn .hero-character-sprite {
+    width: 118px;
+    height: 118px;
+    flex-basis: 118px;
+  }
+  .game-board-panel > .plant-panel .plant-portrait {
+    width: 42px;
+    height: 42px;
+    min-height: 42px;
+    flex-basis: 42px;
+  }
+}
