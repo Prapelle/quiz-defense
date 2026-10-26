@@ -1,0 +1,4 @@
+setName,question,choiceA,choiceB,choiceC,choiceD,answerIndex,explanation,subject,grade,difficulty
+ตัวอย่าง ป.3,"12 + 9 ได้เท่าไร?",19,20,21,22,2,"12 + 9 = 21",คณิตศาสตร์,ป.3,ง่าย
+ตัวอย่าง ป.3,"พืชดูดน้ำจากดินด้วยส่วนใด?",ใบ,ราก,ดอก,ผล,1,"รากช่วยดูดน้ำและแร่ธาตุ",วิทยาศาสตร์,ป.3,ง่าย
+ตัวอย่าง ป.3,"What is the opposite of hot?",Warm,Cold,Soft,Fast,1,"Cold means the opposite of hot.",ภาษาอังกฤษ,ป.3,ง่าย

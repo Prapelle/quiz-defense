@@ -1,0 +1,50 @@
+{
+  "app": "quiz-defense",
+  "schemaVersion": 1,
+  "exportedAt": "2026-10-26T00:00:00.000Z",
+  "sets": [
+    {
+      "id": "sample-primary",
+      "name": "ชุดตัวอย่างสำหรับครู",
+      "description": "ตัวอย่างรูปแบบ JSON สำหรับนำเข้าชุดคำถาม",
+      "subject": "หลายวิชา",
+      "updatedAt": "2026-10-26T00:00:00.000Z",
+      "questionIds": ["sample-math-1", "sample-science-1", "sample-english-1"]
+    }
+  ],
+  "questions": [
+    {
+      "id": "sample-math-1",
+      "setId": "sample-primary",
+      "question": "36 ÷ 4 ได้เท่าไร?",
+      "choices": ["6", "7", "8", "9"],
+      "answerIndex": 3,
+      "explanation": "36 หารด้วย 4 ได้ 9 เพราะ 9 × 4 = 36",
+      "subject": "คณิตศาสตร์",
+      "grade": "ป.3",
+      "difficulty": "ง่าย"
+    },
+    {
+      "id": "sample-science-1",
+      "setId": "sample-primary",
+      "question": "พืชดูดน้ำจากดินด้วยส่วนใดเป็นหลัก?",
+      "choices": ["ราก", "ดอก", "ผล", "เมล็ด"],
+      "answerIndex": 0,
+      "explanation": "รากช่วยดูดน้ำและแร่ธาตุจากดินเข้าสู่พืช",
+      "subject": "วิทยาศาสตร์",
+      "grade": "ป.3",
+      "difficulty": "ง่าย"
+    },
+    {
+      "id": "sample-english-1",
+      "setId": "sample-primary",
+      "question": "What is the meaning of 'book'?",
+      "choices": ["โต๊ะ", "หนังสือ", "เก้าอี้", "ดินสอ"],
+      "answerIndex": 1,
+      "explanation": "Book แปลว่า หนังสือ",
+      "subject": "ภาษาอังกฤษ",
+      "grade": "ป.3",
+      "difficulty": "ง่าย"
+    }
+  ]
+}
