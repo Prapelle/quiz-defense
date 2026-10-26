@@ -52,17 +52,17 @@ export const GAME_SETTINGS = {
 } as const;
 
 export const PLANTS: PlantConfig[] = [
-  { id: 'kumarn', name: 'กุมารวิญญาณ', emoji: '🧒🏻', cost: 50, unlockAtStreak: 0, hp: 100, role: 'สร้างพลังอาคม', description: 'สร้างพลังอาคมเพิ่มทุก 8 วินาที', attackDamage: 0, attackRange: 0, attackMs: 0, manaEveryMs: 8000 },
-  { id: 'lotus', name: 'ดอกบัวอาคม', emoji: '🪷', cost: 75, unlockAtStreak: 0, hp: 85, role: 'โจมตีระยะไกล', description: 'ยิงประกายอาคมไปยังผีในเลนเดียวกัน', attackDamage: 24, attackRange: 700, attackMs: 1700 },
-  { id: 'bindLotus', name: 'บัวสะกดวิญญาณ', emoji: '🪻', cost: 100, unlockAtStreak: 2, hp: 100, role: 'ลดความเร็ว', description: 'สะกดผีให้เคลื่อนที่ช้าลง', attackDamage: 8, attackRange: 680, attackMs: 2100, slowMs: 2400 },
-  { id: 'ward', name: 'เสาหลักอาคม', emoji: '🗿', cost: 125, unlockAtStreak: 3, hp: 420, role: 'ป้องกัน', description: 'รับการโจมตีแทนแนวหลัง', attackDamage: 0, attackRange: 0, attackMs: 0 },
-  { id: 'fireLotus', name: 'ดอกบัวเพลิง', emoji: '🌺', cost: 150, unlockAtStreak: 4, hp: 90, role: 'โจมตีวงกว้าง', description: 'ระเบิดอาคมใส่ผีบริเวณใกล้เคียง', attackDamage: 42, attackRange: 420, attackMs: 2900, splashRadius: 105 },
+  { id: 'kumarn', name: 'กุมารวิญญาณ', emoji: '🧒🏻', cost: 50, unlockAtStreak: 0, hp: 45, role: 'สร้างพลังอาคม', description: 'สร้างพลังอาคมเพิ่มทุก 8 วินาที', attackDamage: 0, attackRange: 0, attackMs: 0, manaEveryMs: 8000 },
+  { id: 'lotus', name: 'ดอกบัวอาคม', emoji: '🪷', cost: 75, unlockAtStreak: 0, hp: 40, role: 'โจมตีระยะไกล', description: 'ยิงประกายอาคมไปยังผีในเลนเดียวกัน', attackDamage: 24, attackRange: 700, attackMs: 1700 },
+  { id: 'bindLotus', name: 'บัวสะกดวิญญาณ', emoji: '🪻', cost: 100, unlockAtStreak: 2, hp: 45, role: 'ลดความเร็ว', description: 'สะกดผีให้เคลื่อนที่ช้าลง', attackDamage: 8, attackRange: 680, attackMs: 2100, slowMs: 2400 },
+  { id: 'ward', name: 'เสาหลักอาคม', emoji: '🗿', cost: 125, unlockAtStreak: 3, hp: 180, role: 'ป้องกัน', description: 'รับการโจมตีแทนแนวหลัง', attackDamage: 0, attackRange: 0, attackMs: 0 },
+  { id: 'fireLotus', name: 'ดอกบัวเพลิง', emoji: '🌺', cost: 150, unlockAtStreak: 4, hp: 42, role: 'โจมตีวงกว้าง', description: 'ระเบิดอาคมใส่ผีบริเวณใกล้เคียง', attackDamage: 42, attackRange: 420, attackMs: 2900, splashRadius: 105 },
 ];
 
 export const GHOSTS: GhostConfig[] = [
-  { id: 'tanian', name: 'ผีตานี', emoji: '👻', hp: 90, speed: 20, damage: 1, reward: 15, description: 'ตัวไว ชอบลอบเข้าหาฐาน', size: 27 },
-  { id: 'krasue', name: 'ผีกระสือ', emoji: '🔮', hp: 120, speed: 15, damage: 1, reward: 20, description: 'ลอยข้ามเสาหลักอาคมได้', flying: true, size: 30 },
-  { id: 'pret', name: 'ผีเปรต', emoji: '👹', hp: 260, speed: 9, damage: 2, reward: 30, description: 'อึด เคลื่อนที่ช้า แต่รับความเสียหายได้นาน', size: 36 },
+  { id: 'tanian', name: 'ผีตานี', emoji: '👻', hp: 45, speed: 20, damage: 1, reward: 15, description: 'ตัวไว ชอบลอบเข้าหาฐาน', size: 27 },
+  { id: 'krasue', name: 'ผีกระสือ', emoji: '🔮', hp: 60, speed: 15, damage: 1, reward: 20, description: 'ลอยข้ามเสาหลักอาคมได้', flying: true, size: 30 },
+  { id: 'pret', name: 'ผีเปรต', emoji: '👹', hp: 130, speed: 9, damage: 2, reward: 30, description: 'อึด เคลื่อนที่ช้า แต่รับความเสียหายได้นาน', size: 36 },
 ];
 
 export const STAGES = [
