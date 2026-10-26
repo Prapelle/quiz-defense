@@ -12,6 +12,7 @@ export interface GameStats {
   spawned: number;
   target: number;
   streak: number;
+  unlockedPlants: PlantId[];
   stageName: string;
   status: 'playing' | 'won' | 'lost';
 }
@@ -134,6 +135,10 @@ export class GameScene extends Phaser.Scene {
       this.game.events.emit('toast', 'ช่องนี้มีผู้พิทักษ์อยู่แล้ว');
       return;
     }
+    if (!this.unlockedPlants.has(this.selectedPlant)) {
+      this.game.events.emit('toast', 'ตอบคำถามให้ถูกต่อเนื่องเพื่อปลดล็อกผู้พิทักษ์นี้');
+      return;
+    }
     const config = PLANTS.find((p) => p.id === this.selectedPlant)!;
     if (this.mana < config.cost) {
       this.game.events.emit('toast', `พลังอาคมไม่พอ ต้องใช้ ${config.cost}`);
@@ -248,6 +253,9 @@ export class GameScene extends Phaser.Scene {
     const resolution = resolveQuizAnswer(data.correct, this.streak, data.reward, data.streakEvery, data.streakBonus);
     this.streak = resolution.nextStreak;
     if (data.correct) {
+      const newlyUnlocked = PLANTS.filter((plant) => plant.unlockAtStreak > 0 && plant.unlockAtStreak <= this.streak && !this.unlockedPlants.has(plant.id));
+      newlyUnlocked.forEach((plant) => this.unlockedPlants.add(plant.id));
+      if (newlyUnlocked.length) this.game.events.emit('toast', `ปลดล็อกแล้ว: ${newlyUnlocked.map((plant) => plant.name).join('、')}!`);
       this.mana += resolution.manaReward;
       this.score += resolution.scoreReward;
       this.game.events.emit('toast', `ตอบถูก! +${resolution.manaReward} พลังอาคม${resolution.bonus ? ' (โบนัสตอบต่อเนื่อง)' : ''}`);
@@ -265,6 +273,7 @@ export class GameScene extends Phaser.Scene {
     this.stage = Math.max(1, Math.min(3, stage));
     this.mana = this.gameSettings.startingMana; this.health = this.gameSettings.baseHealth; this.score = 0; this.kills = 0; this.spawned = 0; this.streak = 0;
     this.spawnElapsed = 0; this.status = 'playing'; this.selectedPlant = 'lotus';
+    this.unlockedPlants = new Set(PLANTS.filter((plant) => plant.unlockAtStreak === 0).map((plant) => plant.id));
     this.pushStats();
   }
 
@@ -282,7 +291,7 @@ export class GameScene extends Phaser.Scene {
 
   private getStats(): GameStats {
     const config = STAGES.find((s) => s.id === this.stage) ?? STAGES[0];
-    return { mana: this.mana, health: this.health, score: this.score, kills: this.kills, spawned: this.spawned, target: this.targetEnemies(), streak: this.streak, stageName: config.name, status: this.status };
+    return { mana: this.mana, health: this.health, score: this.score, kills: this.kills, spawned: this.spawned, target: this.targetEnemies(), streak: this.streak, unlockedPlants: [...this.unlockedPlants], stageName: config.name, status: this.status };
   }
 
   private pushStats(): void {
