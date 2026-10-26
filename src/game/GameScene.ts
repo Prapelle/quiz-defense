@@ -227,8 +227,8 @@ export class GameScene extends Phaser.Scene {
     }
     if (plant.config.manaEveryMs && now - plant.lastAction >= plant.config.manaEveryMs) {
       plant.lastAction = now;
-      this.mana += 15;
-      this.game.events.emit('toast', 'กุมารวิญญาณสร้างพลังอาคม +15');
+      this.mana += 20;
+      this.game.events.emit('toast', 'กุมารวิญญาณสร้างพลังอาคม +20');
       this.pushStats();
     }
     if (!plant.config.attackDamage || now - plant.lastAction < plant.config.attackMs) return;
