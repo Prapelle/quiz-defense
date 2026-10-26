@@ -32,6 +32,7 @@ export class GameScene extends Phaser.Scene {
   private kills: number = 0;
   private spawned: number = 0;
   private streak: number = 0;
+  private unlockedPlants = new Set<PlantId>(PLANTS.filter((plant) => plant.unlockAtStreak === 0).map((plant) => plant.id));
   private status: GameStats['status'] = 'playing';
   private spawnElapsed = 0;
   private uiTexts = new Map<string, Phaser.GameObjects.Text>();
