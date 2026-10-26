@@ -95,7 +95,7 @@ export default function App() {
       const qs = current.questions.filter((q) => q.setId === set?.id);
       const pool = qs.length ? qs : current.questions;
       const question = pickUnseenQuestion(pool, usedQuestions.current);
-      if (!question) { showToast('ยังไม่มีคำถามในชุดนี้ ไปที่จัดการคำถามเพื่อเพิ่มคำถามก่อน'); return; }
+      if (!question) { game.scene.getScene('GameScene').events.emit('quiz-unavailable'); showToast('ยังไม่มีคำถามในชุดนี้ ไปที่จัดการคำถามเพื่อเพิ่มคำถามก่อน'); return; }
       const scene = game.scene.getScene('GameScene');
       scene.scene.pause();
       setCurrentQuestion(question); setQuestionAnswer(null); setQuestionModal(true);
@@ -128,7 +128,7 @@ export default function App() {
     const scene = game.scene.getScene('GameScene');
     scene.events.emit('set-game-settings', save.settings);
     scene.events.emit('reset-game', selectedStage);
-    scene.events.emit('set-speed', gameSpeed);
+    scene.events.emit('set-speed', 1);
     setSelectedPlant('lotus'); setGameSpeed(1);
     usedQuestions.current.clear(); setBattleResult(null); setCurrentQuestion(null); setQuestionAnswer(null); setQuestionModal(false);
   }, [game, selectedStage, page, save?.settings]);
