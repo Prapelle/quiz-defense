@@ -8,7 +8,7 @@ describe('game configuration', () => {
   });
 
   it('increases ghost attack damage by type', () => {
-    expect(GHOSTS.map((ghost) => ghost.damage)).toEqual([2, 2, 3]);
+    expect(GHOSTS.map((ghost) => ghost.damage)).toEqual([5, 9, 15]);
   });
 
   it('contains five distinct player units with positive cost and health', () => {
