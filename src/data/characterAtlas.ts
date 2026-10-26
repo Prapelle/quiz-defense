@@ -17,9 +17,9 @@ export function spriteBackgroundStyle(frame: number, size: number): import('reac
   const column = frame % 5;
   const row = Math.floor(frame / 5);
   return {
-    backgroundImage: `url("${CHARACTER_ATLAS_DATA_URL}")`,
-    backgroundSize: `{size * 5}px {size * 2}px`,
-    backgroundPosition: `-{column * size}px -{row * size}px`,
+    backgroundImage: 'url("' + CHARACTER_ATLAS_DATA_URL + '")',
+    backgroundSize: String(size * 5) + 'px ' + String(size * 2) + 'px',
+    backgroundPosition: '-' + String(column * size) + 'px -' + String(row * size) + 'px',
     backgroundRepeat: 'no-repeat',
   };
 }
