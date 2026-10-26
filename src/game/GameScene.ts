@@ -79,9 +79,11 @@ export class GameScene extends Phaser.Scene {
 
   update(_time: number, delta: number): void {
     if (this.status !== 'playing') return;
-    const scaledDelta = delta * this.speedMultiplier;
+    const realDelta = delta;
+    const scaledDelta = realDelta * this.speedMultiplier;
     this.simulationTime += scaledDelta;
-    this.quizElapsed += scaledDelta;
+    // Quiz cooldown is wall-clock time, independent of accelerated battle speed.
+    this.quizElapsed += realDelta;
     if (this.quizElapsed >= 30000 && !this.quizModalOpen) {
       this.quizElapsed = 0;
       this.quizReady = true;
@@ -306,7 +308,7 @@ export class GameScene extends Phaser.Scene {
   private requestQuiz(): void {
     if (this.status !== 'playing' || this.quizModalOpen) return;
     if (!this.quizReady) {
-      this.game.events.emit('toast', `คำถามถัดไปจะมาใน ${Math.max(1, Math.ceil((30000 - this.quizElapsed) / 1000 / this.speedMultiplier))} วินาที`);
+      this.game.events.emit('toast', `คำถามถัดไปจะมาใน ${Math.max(1, Math.ceil((30000 - this.quizElapsed) / 1000))} วินาที`);
       return;
     }
     this.quizModalOpen = true;
