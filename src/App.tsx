@@ -28,6 +28,7 @@ export default function App() {
   const [game, setGame] = useState<Phaser.Game | null>(null);
   const [selectedStage, setSelectedStage] = useState(1);
   const [selectedPlant, setSelectedPlant] = useState<PlantId>('lotus');
+  const [gameSpeed, setGameSpeed] = useState<1 | 2 | 3>(1);
   const [stats, setStats] = useState<GameStats>({ mana: 150, health: 5, score: 0, kills: 0, spawned: 0, target: 10, streak: 0, unlockedPlants: ['kumarn', 'lotus'], wave: 1, totalWaves: 3, waveWaiting: false, stageName: STAGES[0].name, status: 'playing' });
   const [currentQuestion, setCurrentQuestion] = useState<QuizQuestion | null>(null);
   const [questionAnswer, setQuestionAnswer] = useState<number | null>(null);
@@ -127,12 +128,18 @@ export default function App() {
     const scene = game.scene.getScene('GameScene');
     scene.events.emit('set-game-settings', save.settings);
     scene.events.emit('reset-game', selectedStage);
-    setSelectedPlant('lotus');
+    scene.events.emit('set-speed', gameSpeed);
+    setSelectedPlant('lotus'); setGameSpeed(1);
     usedQuestions.current.clear(); setBattleResult(null); setCurrentQuestion(null); setQuestionAnswer(null); setQuestionModal(false);
   }, [game, selectedStage, page, save?.settings]);
 
   function startStage(stage: number) {
     setSelectedStage(stage); setPage('battle'); setGame(null); setQuestionModal(false); setBattleResult(null); usedQuestions.current.clear();
+  }
+
+  function changeGameSpeed(speed: 1 | 2 | 3) {
+    setGameSpeed(speed);
+    game?.scene.getScene('GameScene').events.emit('set-speed', speed);
   }
 
   function answerQuestion(index: number) {
@@ -215,6 +222,7 @@ export default function App() {
         <section className="game-board-panel"><GameCanvas key={`game-${selectedStage}-${page}`} stage={selectedStage} onReady={setGame} /><div className="board-footer"><span>🟢 แตะช่องในสนามเพื่อวางผู้พิทักษ์</span><span>ด่าน {selectedStage} · ผีที่เกิด {stats.spawned}/{stats.target}</span></div></section>
         <aside className="battle-sidebar">
           <section className="panel plant-panel"><div className="panel-title"><span>🌱 เลือกผู้พิทักษ์</span><span className="muted-small">แตะเพื่อเลือก</span></div><div className="plant-picker">{PLANTS.map((plant) => { const unlocked = stats.unlockedPlants.includes(plant.id); return <button key={plant.id} disabled={!unlocked} aria-label={unlocked ? `${plant.name} ราคา ${plant.cost} พลังอาคม` : `${plant.name} ยังล็อกอยู่ ต้องตอบถูกต่อเนื่อง ${plant.unlockAtStreak} ข้อ`} className={`plant-card ${selectedPlant === plant.id ? 'chosen' : ''} ${stats.mana < plant.cost ? 'unaffordable' : ''} ${!unlocked ? 'locked' : ''}`} onClick={() => { if (!unlocked) return; setSelectedPlant(plant.id); if (game) game.scene.getScene('GameScene').events.emit('selected-plant', plant.id); }}><span className="plant-portrait" style={spriteBackgroundStyle(CHARACTER_FRAMES[plant.id], 46)} role="img" aria-label={plant.name} />{!unlocked && <span className="plant-lock" aria-hidden="true">🔒</span>}<strong>{plant.name}</strong><small>{unlocked ? plant.role : `ตอบถูกต่อเนื่อง ${plant.unlockAtStreak} ข้อ`}</small><span className="plant-cost">{unlocked ? `☀ ${plant.cost}` : '🔒 ยังไม่ปลดล็อก'}</span></button>; })}</div><p className="selected-tip">{PLANTS.find((p) => p.id === selectedPlant)?.description}</p></section>
+          <section className="panel speed-panel"><div className="panel-title"><span>⏩ ความเร็วเกม</span><strong>×{gameSpeed}</strong></div><div className="speed-controls">{([1, 2, 3] as const).map((speed) => <button key={speed} className={`button compact ${gameSpeed === speed ? 'primary' : 'ghost'}`} onClick={() => changeGameSpeed(speed)}>×{speed}</button>)}</div><p className="speed-note">คำถามบังคับจะปรากฏทุก 30 วินาที</p></section>
           <section className="panel mana-panel"><div className="panel-title"><span>☀ พลังอาคม</span><strong>{stats.mana}</strong></div><div className="mana-track"><span style={{ width: `${Math.min(100, stats.mana / 3)}%` }} /></div><button className="button quiz-button" disabled={!game || stats.status !== 'playing'} onClick={() => game?.events.emit('quiz-requested')}>❔ ท้าทายความรู้ <small>ตอบถูก +{save.settings.rewardCorrect} พลัง</small></button><div className="streak-note">{stats.streak > 0 ? `🔥 ตอบถูกต่อเนื่อง ${stats.streak} ข้อ` : 'ตอบถูกต่อเนื่องเพื่อรับโบนัส'}</div></section>
           
           <section className="panel enemy-panel"><div className="panel-title"><span>👻 สารานุกรมผี</span><button className="text-button" onClick={() => showToast('ผีแต่ละชนิดมีพลังชีวิตและความเร็วแตกต่างกัน วางผู้พิทักษ์ให้ตรงเลน!')}>ⓘ วิธีรับมือ</button></div><div className="ghost-mini-list">{GHOSTS.map((ghost) => <div key={ghost.id} className="ghost-mini"><span className="ghost-portrait" style={spriteBackgroundStyle(CHARACTER_FRAMES[ghost.id], 38)} role="img" aria-label={ghost.name} /><div><strong>{ghost.name}</strong><small>{ghost.description}</small></div><em>{ghost.hp} HP</em></div>)}</div></section>
