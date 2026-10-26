@@ -339,3 +339,216 @@ option { color: #f4f7fc; background: #101c31; }
 .set-manage-item input { font-size: 11px; padding: 8px 9px; }
 .set-manage-item > span { color: #8ea6c2; font-size: 9px; white-space: nowrap; }
 .set-manage-item .button { font-size: 9px; padding: 6px 8px; min-height: 32px; }
+
+
+/* ─────────────────────────────────────────────────────────────
+   QUIZ DEFENSE · PHASE 1 UI POLISH
+   Reference direction: Thai spirit fantasy, midnight blue, jade,
+   talisman gold, and touch-first controls.
+   ───────────────────────────────────────────────────────────── */
+:root {
+  --qd-night: #070d1b;
+  --qd-panel: #111c31;
+  --qd-panel-deep: #0b1426;
+  --qd-gold: #ffd16c;
+  --qd-gold-bright: #ffe7a0;
+  --qd-spirit: #79e6ff;
+  --qd-jade: #6bce9b;
+}
+.app-shell {
+  background:
+    radial-gradient(ellipse at 52% 0%, rgba(57, 82, 128, .19), transparent 45%),
+    radial-gradient(ellipse at 100% 65%, rgba(35, 73, 74, .1), transparent 34%),
+    var(--qd-night);
+}
+.topbar {
+  position: relative;
+  background: linear-gradient(90deg, rgba(5, 11, 24, .98), rgba(11, 21, 40, .94), rgba(5, 11, 24, .98));
+  border-bottom-color: rgba(255, 209, 108, .17);
+}
+.brand-icon {
+  position: relative;
+  background:
+    radial-gradient(circle at 50% 45%, rgba(120, 224, 255, .25), transparent 62%),
+    linear-gradient(145deg, #263c61, #0a1427 76%);
+  border-color: rgba(255, 209, 108, .42);
+  box-shadow: inset 0 0 14px rgba(112, 224, 255, .13), 0 0 22px rgba(78, 173, 229, .08);
+}
+.main-nav button { min-height: 40px; }
+.button { min-height: 42px; }
+.button.primary, .play-button {
+  box-shadow: inset 0 1px rgba(255,255,255,.38), 0 5px 0 rgba(102, 55, 16, .32), 0 10px 20px rgba(255, 169, 58, .08);
+}
+.home-screen {
+  max-width: 1540px;
+  grid-template-columns: minmax(0, 1.05fr) minmax(0, .95fr);
+}
+.home-art {
+  border-color: rgba(125, 205, 255, .3);
+  box-shadow: 0 24px 70px rgba(0,0,0,.42), inset 0 0 55px rgba(119, 202, 255, .08);
+}
+.home-copy h1 span {
+  text-shadow: 0 3px 0 #70421d, 0 0 24px rgba(255, 190, 75, .18);
+}
+.home-copy h1 strong {
+  text-shadow: 0 3px 0 #17466a, 0 0 27px rgba(114, 220, 255, .2);
+}
+.play-button {
+  background: linear-gradient(180deg, #ffe28a, #ffb343) !important;
+  color: #32213b !important;
+  border-color: #ffe8a9 !important;
+}
+.stage-card, .panel, .game-board-panel, .settings-card, .backup-card {
+  box-shadow: inset 0 1px rgba(255,255,255,.035), 0 12px 30px rgba(0,0,0,.19);
+}
+.stage-card { border-color: rgba(140, 183, 228, .22); }
+.stage-visual { border-bottom-color: rgba(255, 209, 108, .12); }
+.battle-page {
+  width: min(1660px, 100%);
+  padding-top: 12px;
+}
+.battle-header {
+  padding: 11px 14px;
+  border: 1px solid rgba(154, 194, 235, .18);
+  border-radius: 15px;
+  background: linear-gradient(105deg, rgba(17, 29, 51, .94), rgba(8, 17, 32, .86));
+  box-shadow: inset 0 1px rgba(255,255,255,.035);
+}
+.battle-header .eyebrow { margin-bottom: 5px; }
+.battle-mini-stats { gap: 8px; }
+.battle-mini-stats span {
+  min-width: 66px;
+  text-align: center;
+  border-color: rgba(155, 191, 232, .25);
+  background: linear-gradient(145deg, #1b2d49, #101b30);
+  box-shadow: inset 0 1px rgba(255,255,255,.035);
+}
+.battle-layout {
+  grid-template-columns: minmax(0, 1.72fr) minmax(270px, .78fr);
+  gap: 12px;
+  align-items: start;
+}
+.game-board-panel {
+  padding: 10px;
+  gap: 5px;
+  border: 1px solid rgba(127, 190, 240, .34);
+  border-radius: 17px;
+  background: linear-gradient(160deg, #0d1930, #070f1f 85%);
+  box-shadow: 0 18px 42px rgba(0,0,0,.32), inset 0 1px rgba(255,255,255,.045);
+}
+.game-canvas-host {
+  position: relative;
+  border: 1px solid rgba(150, 202, 242, .15);
+  border-radius: 12px;
+  background:
+    radial-gradient(ellipse at 50% 0%, rgba(105, 159, 217, .14), transparent 55%),
+    #0a1426;
+}
+.board-footer {
+  min-height: 30px;
+  align-items: center;
+  font-size: 11px;
+  padding: 8px 7px 5px;
+}
+.game-board-panel > .plant-panel {
+  padding: 12px;
+  border-color: rgba(255, 209, 108, .2);
+  border-radius: 13px;
+  background: linear-gradient(120deg, rgba(25, 38, 58, .97), rgba(12, 22, 39, .98));
+}
+.game-board-panel > .plant-panel .panel-title {
+  font-size: 14px;
+  color: #fff0c5;
+}
+.game-board-panel > .plant-panel .plant-picker {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 10px;
+}
+.game-board-panel > .plant-panel .plant-card {
+  position: relative;
+  min-height: 100px;
+  padding: 9px 6px 8px;
+  border-radius: 12px;
+  background: linear-gradient(155deg, #233652, #111e33);
+  border-color: rgba(151, 190, 232, .22);
+}
+.game-board-panel > .plant-panel .plant-card.chosen {
+  background: linear-gradient(155deg, rgba(91, 77, 41, .98), rgba(31, 38, 52, .98));
+  border-color: #ffda7b;
+  box-shadow: 0 0 0 1px rgba(255, 220, 123, .23), 0 0 20px rgba(255, 218, 114, .09);
+}
+.game-board-panel > .plant-panel .plant-emoji {
+  min-height: 40px;
+  font-size: 32px;
+}
+.game-board-panel > .plant-panel .plant-card strong {
+  font-size: 11px;
+  min-height: 28px;
+}
+.game-board-panel > .plant-panel .plant-card small {
+  font-size: 9px;
+  min-height: 22px;
+}
+.game-board-panel > .plant-panel .plant-cost {
+  font-size: 11px;
+  padding: 4px 7px;
+}
+.game-board-panel > .plant-panel .selected-tip {
+  font-size: 11px;
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(174, 201, 235, .1);
+}
+.battle-sidebar { gap: 12px; }
+.battle-sidebar .mana-panel { padding: 15px; }
+.battle-sidebar .quiz-button {
+  min-height: 62px;
+  border-radius: 12px;
+  box-shadow: inset 0 1px rgba(255,255,255,.45), 0 5px 0 rgba(106, 61, 20, .24);
+}
+.battle-sidebar .enemy-panel { padding: 14px; }
+.battle-sidebar .ghost-mini {
+  grid-template-columns: 43px minmax(0, 1fr) auto;
+  gap: 9px;
+  padding: 11px 0;
+}
+.battle-sidebar .ghost-mini > span { font-size: 30px; }
+.battle-sidebar .ghost-mini strong { font-size: 12px; color: #f8e7c5; }
+.battle-sidebar .ghost-mini small { font-size: 10px; line-height: 1.45; }
+.battle-sidebar .ghost-mini em { font-size: 10px; white-space: nowrap; }
+.quiz-modal, .result-modal {
+  border-color: rgba(255, 220, 133, .65);
+  box-shadow: 0 30px 100px rgba(0,0,0,.68), inset 0 1px rgba(255,255,255,.08), 0 0 34px rgba(68, 143, 207, .08);
+}
+.quiz-option {
+  min-height: 48px;
+  border-radius: 10px;
+  font-size: 14px;
+}
+.app-footer {
+  border-top-color: rgba(255, 209, 108, .13);
+  background: rgba(4, 10, 21, .48);
+}
+@media (min-width: 1400px) {
+  .battle-page { padding-left: 28px; padding-right: 28px; }
+  .battle-layout { grid-template-columns: minmax(0, 1.9fr) minmax(300px, .72fr); }
+}
+@media (max-width: 1050px) {
+  .battle-layout { grid-template-columns: minmax(0, 1.5fr) minmax(245px, .82fr); }
+  .game-board-panel > .plant-panel .plant-picker { gap: 5px; }
+  .game-board-panel > .plant-panel .plant-card { min-height: 94px; }
+  .game-board-panel > .plant-panel .plant-card strong { font-size: 10px; }
+}
+@media (max-width: 760px) {
+  .battle-header { align-items: flex-start; flex-direction: column; }
+  .battle-mini-stats { flex-wrap: wrap; width: 100%; }
+  .battle-layout { grid-template-columns: minmax(0, 1fr); }
+  .game-board-panel > .plant-panel .plant-picker { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .game-board-panel > .plant-panel .plant-card { min-height: 94px; }
+  .game-board-panel > .plant-panel .plant-card strong { font-size: 12px; }
+  .game-board-panel > .plant-panel .plant-card small { font-size: 10px; }
+}
+@media (orientation: portrait) and (max-width: 900px) {
+  .game-board-panel > .plant-panel .plant-picker { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
