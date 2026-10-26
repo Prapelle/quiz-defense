@@ -68,6 +68,11 @@ export class GameScene extends Phaser.Scene {
     this.events.on('set-speed', (speed: 1 | 2 | 3) => { this.speedMultiplier = speed; });
     this.events.on('answer-question', (data: { correct: boolean; reward: number; streakEvery: number; streakBonus: number }) => this.applyAnswer(data));
     this.events.on('request-question', () => this.requestQuiz());
+    this.events.on('quiz-unavailable', () => {
+      this.quizModalOpen = false;
+      this.quizReady = false;
+      this.quizElapsed = 0;
+    });
     this.events.on('scene-ready', () => this.pushStats());
     this.resetGame(1);
   }
@@ -277,7 +282,7 @@ export class GameScene extends Phaser.Scene {
         if (bullet.splash > 0) {
           for (const target of [...this.ghosts]) if (target.row === bullet.target.row && Math.abs(target.x - bullet.target.x) < bullet.splash) this.damageGhost(target, bullet.damage);
         } else this.damageGhost(bullet.target, bullet.damage);
-        if (bullet.slowMs) bullet.target.slowUntil = this.time.now + bullet.slowMs;
+        if (bullet.slowMs) bullet.target.slowUntil = this.simulationTime + bullet.slowMs;
         bullet.circle.destroy(); this.projectiles = this.projectiles.filter((p) => p !== bullet);
       } else {
         bullet.x += dx / distance * step; bullet.y += dy / distance * step; bullet.circle.setPosition(bullet.x, bullet.y);
