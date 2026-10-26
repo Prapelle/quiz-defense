@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { resolvePlantUnlocks, resolveQuizAnswer, targetEnemiesForStage } from './rules';
+import { resolvePlantUnlocks, resolveQuizAnswer, resolveWaveProgress, targetEnemiesForStage } from './rules';
 
 describe('resolveQuizAnswer', () => {
   it('awards energy and points for a correct answer', () => {
@@ -59,5 +59,23 @@ describe('resolvePlantUnlocks', () => {
 
   it('does not announce an already unlocked plant twice', () => {
     expect(resolvePlantUnlocks(4, ['kumarn', 'lotus', 'bindLotus', 'ward', 'fireLotus']).newlyUnlocked).toEqual([]);
+  });
+});
+
+describe('resolveWaveProgress', () => {
+  it('reports the active wave and spawned count', () => {
+    expect(resolveWaveProgress([3, 3, 4], 4, false)).toEqual({
+      waveIndex: 1, spawnedInWave: 1, totalSpawned: 4, waitingForNextWave: false,
+    });
+  });
+
+  it('caps progress at the total enemy count', () => {
+    expect(resolveWaveProgress([3, 3, 4], 99, false)).toEqual({
+      waveIndex: 2, spawnedInWave: 4, totalSpawned: 10, waitingForNextWave: false,
+    });
+  });
+
+  it('does not mark the final wave as waiting for another wave', () => {
+    expect(resolveWaveProgress([2, 2], 4, true).waitingForNextWave).toBe(false);
   });
 });
