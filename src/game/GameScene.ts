@@ -131,9 +131,10 @@ export class GameScene extends Phaser.Scene {
     this.worldDecor = [];
 
     const stageConfig = STAGES.find((item) => item.id === this.stage) ?? STAGES[0];
-    const theme = this.stage === 1
+    const mapVariant = ((this.stage - 1) % 3) + 1;
+    const theme = mapVariant === 1
       ? { skyA: 0x0d1731, skyB: 0x152648, skyC: 0x172a42, skyD: 0x0a1728, field: 0x1b3a35, tileA: 0x527a51, tileB: 0x466d49, tileLine: 0xa8d38c, border: 0x7c5b3b, gate: 0x2b2540, trim: 0xe3b966 }
-      : this.stage === 2
+      : mapVariant === 2
         ? { skyA: 0x09261f, skyB: 0x174b38, skyC: 0x22563a, skyD: 0x071b19, field: 0x173d2e, tileA: 0x47774a, tileB: 0x315e3c, tileLine: 0x9acb76, border: 0x37533a, gate: 0x173a2e, trim: 0xb6d875 }
         : { skyA: 0x17192f, skyB: 0x343052, skyC: 0x3d3245, skyD: 0x0e1425, field: 0x333744, tileA: 0x5b6260, tileB: 0x464d54, tileLine: 0xb3b9a1, border: 0x5b493d, gate: 0x28233b, trim: 0xe0b879 };
 
@@ -143,7 +144,7 @@ export class GameScene extends Phaser.Scene {
     bg.fillRect(0, 0, GAME_SETTINGS.canvasWidth, GAME_SETTINGS.canvasHeight);
 
     // Each stage has its own landmark silhouette and atmosphere.
-    if (this.stage === 1) {
+    if (mapVariant === 1) {
       bg.fillStyle(0xc6e5ff, 0.9); bg.fillCircle(1070, 55, 31);
       bg.fillStyle(0x0b1730, 0.4); bg.fillCircle(1082, 46, 31);
       bg.fillStyle(0x0a1327, 0.95);
@@ -153,7 +154,7 @@ export class GameScene extends Phaser.Scene {
         bg.fillRect(x - 26, 115, 52, 27);
         bg.fillStyle(0xffcf6b, 0.18); bg.fillCircle(x, 127, 3); bg.fillStyle(0x0a1327, 0.95);
       }
-    } else if (this.stage === 2) {
+    } else if (mapVariant === 2) {
       bg.fillStyle(0x071c16, 0.95);
       for (let i = 0; i < 10; i += 1) {
         const x = 230 + i * 108;
@@ -187,10 +188,10 @@ export class GameScene extends Phaser.Scene {
         const colour = (row + col) % 2 === 0 ? theme.tileA : theme.tileB;
         bg.fillStyle(colour, 0.93); bg.fillRoundedRect(x, y, 100, 79, 8);
         bg.lineStyle(1, theme.tileLine, 0.22); bg.strokeRoundedRect(x, y, 100, 79, 8);
-        if (this.stage === 2) {
+        if (mapVariant === 2) {
           bg.fillStyle(0xb9d987, 0.13);
           bg.fillTriangle(x + 12, y + 62, x + 24, y + 44, x + 27, y + 64);
-        } else if (this.stage === 3) {
+        } else if (mapVariant === 3) {
           bg.lineStyle(2, 0x161c2b, 0.16);
           bg.lineBetween(x + 15, y + 17, x + 42, y + 17);
           bg.lineBetween(x + 60, y + 55, x + 88, y + 55);
@@ -202,13 +203,13 @@ export class GameScene extends Phaser.Scene {
     bg.fillStyle(theme.border, 1); bg.fillRoundedRect(20, 111, 120, 445, 12);
     bg.fillStyle(theme.gate, 1); bg.fillRoundedRect(37, 133, 86, 398, 8);
     bg.lineStyle(3, theme.trim, 0.9); bg.strokeRoundedRect(36, 132, 88, 400, 8);
-    bg.fillStyle(this.stage === 3 ? 0xc18a6e : this.stage === 2 ? 0x90c75d : 0xffae42, 0.35); bg.fillCircle(78, 149, 35);
+    bg.fillStyle(mapVariant === 3 ? 0xc18a6e : mapVariant === 2 ? 0x90c75d : 0xffae42, 0.35); bg.fillCircle(78, 149, 35);
     bg.fillStyle(theme.trim, 1); bg.fillCircle(78, 149, 10);
     bg.fillStyle(0x101a2a, 1); bg.fillRoundedRect(23, 550, 112, 45, 10);
     bg.lineStyle(2, theme.trim, 0.8); bg.strokeRoundedRect(23, 550, 112, 45, 10);
 
     const baseLabels = ['หมู่บ้าน', 'ป่ากล้วย', 'วัดร้าง'];
-    const baseLabel = this.add.text(79, 571, baseLabels[this.stage - 1] ?? 'ฐานป้องกัน', {
+    const baseLabel = this.add.text(79, 571, baseLabels[mapVariant - 1] ?? 'ฐานป้องกัน', {
       fontFamily: 'Tahoma, Arial, sans-serif', fontSize: '17px', color: '#fff0c7', fontStyle: 'bold',
     }).setOrigin(0.5).setDepth(10);
     const stageTitle = this.add.text(640, 22, stageConfig.name, {
@@ -458,7 +459,7 @@ export class GameScene extends Phaser.Scene {
     for (const g of this.ghosts) { g.sprite.destroy(); (g.sprite.getData('hpBar') as Phaser.GameObjects.Graphics | undefined)?.destroy(); }
     for (const p of this.projectiles) p.circle.destroy();
     this.plants = []; this.ghosts = []; this.projectiles = [];
-    this.stage = Math.max(1, Math.min(3, stage));
+    this.stage = Math.max(1, Math.min(STAGES.length, Math.floor(stage)));
     this.drawWorld();
     this.mana = this.gameSettings.startingMana; this.health = this.gameSettings.baseHealth; this.score = 0; this.kills = 0; this.spawned = 0; this.streak = 0;
     this.spawnElapsed = 0; this.waveBreakElapsed = 0; this.currentWaveIndex = 0; this.waveWaiting = false; this.status = 'playing'; this.selectedPlant = 'lotus';
@@ -480,7 +481,8 @@ export class GameScene extends Phaser.Scene {
   }
 
   private targetEnemies(): number {
-    return targetEnemiesForStage(this.stage, this.gameSettings.maxEnemies);
+    const stageConfig = STAGES.find((item) => item.id === this.stage) ?? STAGES[0];
+    return stageConfig.enemies;
   }
 
   private getStats(): GameStats {
