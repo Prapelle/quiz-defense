@@ -86,7 +86,7 @@ export class GameScene extends Phaser.Scene {
         this.waveWaiting = false;
         this.currentWaveIndex += 1;
         this.spawnElapsed = 0;
-        this.game.events.emit('toast', `Wave ${this.currentWaveIndex + 1} กกำลังมา!`.replace('กกำลัง', 'กำลัง'));
+        this.game.events.emit('toast', `Wave ${this.currentWaveIndex + 1} กำลังมา!`);
       }
     } else if (!waveComplete && !this.waveWaiting) {
       const spawnInterval = Math.max(2200, Math.round(this.gameSettings.enemySpawnMs * stageConfig.spawnMs / GAME_SETTINGS.enemySpawnMs));
