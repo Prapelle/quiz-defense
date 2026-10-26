@@ -1,3 +1,20 @@
+import { PLANTS, type PlantId } from './config';
+
+export interface PlantUnlockResolution {
+  unlockedPlants: PlantId[];
+  newlyUnlocked: PlantId[];
+}
+
+/** Unlock plants once the player reaches the required correct-answer streak. */
+export function resolvePlantUnlocks(streak: number, alreadyUnlocked: PlantId[]): PlantUnlockResolution {
+  const unlocked = new Set(alreadyUnlocked);
+  const newlyUnlocked = PLANTS
+    .filter((plant) => plant.unlockAtStreak > 0 && plant.unlockAtStreak <= Math.max(0, Math.floor(streak)) && !unlocked.has(plant.id))
+    .map((plant) => plant.id);
+  newlyUnlocked.forEach((id) => unlocked.add(id));
+  return { unlockedPlants: [...unlocked], newlyUnlocked };
+}
+
 export interface AnswerResolution {
   nextStreak: number;
   manaReward: number;
