@@ -611,3 +611,11 @@ option { color: #f4f7fc; background: #101c31; }
     flex-basis: 42px;
   }
 }
+
+
+/* Fix: protector picker stays below the battlefield. */
+.game-board-panel > .plant-panel { display:block; width:100%; box-sizing:border-box; margin-top:8px; }
+.game-board-panel > .plant-panel .plant-picker { display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:8px; }
+.game-board-panel > .plant-panel .plant-card { min-width:0; }
+.ghost-mini .ghost-portrait { display:block; width:38px; height:38px; flex:0 0 38px; background-repeat:no-repeat; filter:drop-shadow(0 2px 4px rgba(0,0,0,.22)); }
+@media(max-width:760px){ .game-board-panel > .plant-panel .plant-picker { grid-template-columns:repeat(2,minmax(0,1fr)); } }
