@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  importQuestionPackage, packageQuestions, resetProgress, validateQuestionPackage,
+  importQuestionPackage, migrateGameSettings, packageQuestions, resetProgress, validateQuestionPackage,
 } from './database';
 import type { GameSave, QuestionSet, QuizQuestion } from '../types';
 import { DEFAULT_QUESTIONS, DEFAULT_SETS, DEFAULT_SET_ID } from '../data/defaultQuestions';
@@ -30,6 +30,17 @@ const saveFixture = (): GameSave => ({
     maxEnemies: GAME_SETTINGS.maxEnemies, questionCooldownMs: GAME_SETTINGS.questionCooldownMs,
   },
   updatedAt: '2026-10-26T00:00:00.000Z',
+});
+
+describe('game settings migration', () => {
+  it('updates saves using the previous default starting mana to 200', () => {
+    expect(migrateGameSettings({ startingMana: 150 }).startingMana).toBe(200);
+  });
+
+  it('preserves a deliberate custom starting mana value', () => {
+    expect(migrateGameSettings({ startingMana: 250 }).startingMana).toBe(250);
+    expect(migrateGameSettings({ startingMana: 0 }).startingMana).toBe(0);
+  });
 });
 
 describe('question package validation', () => {
