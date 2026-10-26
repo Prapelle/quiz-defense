@@ -19,6 +19,13 @@ describe('game configuration', () => {
     expect(PLANTS.find((plant) => plant.id === 'fireLotus')?.splashRadius).toBeGreaterThan(0);
   });
 
+  it('unlocks special plants only after the required correct-answer streak', () => {
+    expect(PLANTS.filter((plant) => plant.unlockAtStreak === 0).map((plant) => plant.id)).toEqual(['kumarn', 'lotus']);
+    expect(PLANTS.find((plant) => plant.id === 'bindLotus')?.unlockAtStreak).toBe(2);
+    expect(PLANTS.find((plant) => plant.id === 'ward')?.unlockAtStreak).toBe(3);
+    expect(PLANTS.find((plant) => plant.id === 'fireLotus')?.unlockAtStreak).toBe(4);
+  });
+
   it('has three enemy types and makes the preta the tankiest and slowest', () => {
     expect(GHOSTS).toHaveLength(3);
     const preta = GHOSTS.find((ghost) => ghost.id === 'pret')!;
