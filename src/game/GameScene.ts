@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { GAME_SETTINGS, GHOSTS, PLANTS, STAGES, type GhostConfig, type PlantConfig, type PlantId, type GhostId } from './config';
 import { CHARACTER_ATLAS_DATA_URL, CHARACTER_FRAME_SIZE, CHARACTER_FRAMES } from '../data/characterAtlas';
-import { resolvePlantUnlocks, resolveQuizAnswer, targetEnemiesForStage } from './rules';
+import { resolvePlantUnlocks, resolveQuizAnswer } from './rules';
 import type { GameSettings } from '../types';
 
 export interface GameStats {
