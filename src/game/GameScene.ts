@@ -453,6 +453,27 @@ export class GameScene extends Phaser.Scene {
     const reduction = Math.min(0.8, Math.max(0, ghost.config.damageReduction ?? 0));
     ghost.hp -= Math.max(1, Math.round(damage * (1 - reduction)));
     ghost.sprite.setScale(ghost.baseScaleX * 1.12, ghost.baseScaleY * 1.12); this.time.delayedCall(80, () => { if (ghost.sprite.active) ghost.sprite.setScale(ghost.baseScaleX, ghost.baseScaleY); });
+    if (ghost.hp <= 0 && ghost.boss?.ability === 'tigerShift' && !ghost.tigerForm) {
+      ghost.tigerForm = true;
+      ghost.hp = Math.round((ghost.boss.hp || 2200) * 0.75);
+      ghost.config.hp = ghost.hp;
+      ghost.config.speed = 18;
+      ghost.config.damage = 42;
+      const tigerSprite = ghost.sprite as Phaser.GameObjects.Text;
+      tigerSprite.setText('🐅');
+      tigerSprite.setFontSize('68px');
+      this.cameras.main.shake(500, 0.009);
+      this.game.events.emit('toast', '🐅 ผีสมิงฟื้นคืนชีพเป็นร่างเสือ! กำจัดร่างเสือเพื่อชนะบอส');
+      for (let i = 0; i < 2; i += 1) {
+        const row = (ghost.row + i + 1) % GAME_SETTINGS.gridRows;
+        const x = Math.min(1125, ghost.x + 35 + i * 24);
+        const y = 154 + row * 83;
+        const minionSprite = this.add.text(x, y, '🐅', { fontFamily: 'Apple Color Emoji, Segoe UI Emoji, sans-serif', fontSize: '30px', stroke: '#38251b', strokeThickness: 3 }).setOrigin(0.5).setDepth(6);
+        const minionConfig: GhostConfig = { id: 'kongkoi', name: 'เสือบริวาร', emoji: '🐅', hp: 95, speed: 23, damage: 9, reward: 0, description: 'เสือบริวารที่ผีสมิงเรียกมา', size: 30 };
+        this.ghosts.push({ config: minionConfig, row, x, y, hp: minionConfig.hp, sprite: minionSprite, baseScaleX: minionSprite.scaleX, baseScaleY: minionSprite.scaleY, slowUntil: 0, lastAttack: 0 });
+      }
+      return;
+    }
     if (ghost.hp <= 0) {
       if (ghost.config.deathBurstDamage && ghost.config.deathBurstRadius) {
         const radius = ghost.config.deathBurstRadius;
