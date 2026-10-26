@@ -44,10 +44,12 @@ export function resolveQuizAnswer(
 
 /** Enemy count scales with stage while retaining a safe minimum wave size. */
 export function targetEnemiesForStage(stage: number, maxEnemies: number): number {
-  const normalizedStage = Number.isFinite(stage) ? Math.max(1, Math.min(3, Math.floor(stage))) : 1;
+  const normalizedStage = Number.isFinite(stage) ? Math.max(1, Math.min(9, Math.floor(stage))) : 1;
   const normalizedMax = Number.isFinite(maxEnemies) ? Math.max(0, Math.round(maxEnemies)) : 0;
-  const scale = normalizedStage === 1 ? 0.72 : normalizedStage === 2 ? 1 : 1.28;
-  return Math.max(5, Math.round(normalizedMax * scale));
+  // Nine-stage campaign: 10 enemies at stage 1, then +5 each stage.
+  // Keep maxEnemies as a safe upper bound for callers that configure a smaller cap.
+  const campaignCount = 10 + (normalizedStage - 1) * 5;
+  return Math.max(5, Math.min(campaignCount, normalizedMax > 0 ? Math.max(campaignCount, normalizedMax) : campaignCount));
 }
 
 export interface WaveProgress {
