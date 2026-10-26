@@ -208,7 +208,7 @@ export class GameScene extends Phaser.Scene {
     const target = this.ghosts.find((g) => g.row === plant.row && g.x < plant.x + plant.config.attackRange && g.x > plant.x + 15);
     if (!target) return;
     plant.lastAction = now;
-    const circle = this.add.circle(plant.x + 22, plant.y - 7, plant.config.id === 'fireLotus' ? 10 : 6, plant.config.id === 'fireLotus' ? 0xff8c55 : 0x9aebff).setStrokeStyle(2, 0xe7fcff).setDepth(8);
+    const circle = this.add.circle(plant.x + 22, plant.y - 7, 6, 0x9aebff).setStrokeStyle(2, 0xe7fcff).setDepth(8);
     this.projectiles.push({ circle, x: plant.x + 22, y: plant.y - 7, target, speed: 420, damage: plant.config.attackDamage, splash: plant.config.splashRadius ?? 0, slowMs: plant.config.slowMs });
   }
 
