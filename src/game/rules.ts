@@ -47,9 +47,8 @@ export function targetEnemiesForStage(stage: number, maxEnemies: number): number
   const normalizedStage = Number.isFinite(stage) ? Math.max(1, Math.min(9, Math.floor(stage))) : 1;
   const normalizedMax = Number.isFinite(maxEnemies) ? Math.max(0, Math.round(maxEnemies)) : 0;
   // Nine-stage campaign: 10 enemies at stage 1, then +5 each stage.
-  // Keep maxEnemies as a safe upper bound for callers that configure a smaller cap.
   const campaignCount = 10 + (normalizedStage - 1) * 5;
-  return Math.max(5, Math.min(campaignCount, normalizedMax > 0 ? Math.max(campaignCount, normalizedMax) : campaignCount));
+  return normalizedMax <= 0 ? 5 : campaignCount;
 }
 
 export interface WaveProgress {
