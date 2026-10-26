@@ -611,3 +611,24 @@ option { color: #f4f7fc; background: #101c31; }
     flex-basis: 42px;
   }
 }
+
+
+/* UX update: keep protector selection beside the battlefield in one horizontal row. */
+@media (min-width: 761px) {
+  .battle-layout { grid-template-columns: minmax(0, 1fr) minmax(285px, 360px); align-items: start; }
+  .battle-sidebar .plant-panel { order: 0; padding: 12px; }
+  .battle-sidebar .plant-picker { grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 5px; }
+  .battle-sidebar .plant-card { min-height: 106px; padding: 7px 3px; }
+  .battle-sidebar .plant-portrait { width: 38px; height: 38px; min-height: 38px; flex-basis: 38px; }
+  .battle-sidebar .plant-card strong { font-size: 9px; }
+  .battle-sidebar .plant-card small { font-size: 8px; }
+  .battle-sidebar .plant-cost { font-size: 9px; }
+}
+@media (max-width: 760px) {
+  .battle-sidebar .plant-picker { grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 4px; }
+  .battle-sidebar .plant-card { min-height: 92px; padding: 6px 2px; }
+  .battle-sidebar .plant-portrait { width: 34px; height: 34px; min-height: 34px; flex-basis: 34px; }
+  .battle-sidebar .plant-card strong { font-size: 8px; }
+  .battle-sidebar .plant-card small { font-size: 7px; }
+  .battle-sidebar .plant-cost { font-size: 8px; white-space: normal; }
+}
