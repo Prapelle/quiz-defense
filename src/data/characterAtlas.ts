@@ -11,6 +11,8 @@ export const CHARACTER_FRAMES = {
   tanian: 5,
   krasue: 6,
   pret: 7,
+  // Reuse an existing in-atlas frame until dedicated Kongkoi artwork is added.
+  kongkoi: 5,
 } as const;
 
 export const CHARACTER_ATLAS_ROOT_STYLE = {
