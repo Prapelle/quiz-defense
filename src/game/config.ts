@@ -1,5 +1,5 @@
 export type PlantId = 'kumarn' | 'lotus' | 'bindLotus' | 'ward' | 'fireLotus';
-export type GhostId = 'tanian' | 'krasue' | 'pret';
+export type GhostId = 'tanian' | 'krasue' | 'pret' | 'kongkoi';
 
 export interface PlantConfig {
   id: PlantId;
@@ -56,17 +56,18 @@ export const PLANTS: PlantConfig[] = [
   { id: 'lotus', name: 'ดอกบัวอาคม', emoji: '🪷', cost: 75, unlockAtStreak: 0, hp: 85, role: 'โจมตีระยะไกล', description: 'ยิงประกายอาคมไปยังผีในเลนเดียวกัน', attackDamage: 24, attackRange: 700, attackMs: 1700 },
   { id: 'bindLotus', name: 'บัวสะกดวิญญาณ', emoji: '🪻', cost: 100, unlockAtStreak: 2, hp: 100, role: 'ลดความเร็ว', description: 'สะกดผีให้เคลื่อนที่ช้าลง', attackDamage: 8, attackRange: 680, attackMs: 2100, slowMs: 2400 },
   { id: 'ward', name: 'เสาหลักอาคม', emoji: '🗿', cost: 125, unlockAtStreak: 3, hp: 420, role: 'ป้องกัน', description: 'รับการโจมตีแทนแนวหลัง', attackDamage: 0, attackRange: 0, attackMs: 0 },
-  { id: 'fireLotus', name: 'ดอกบัวเพลิง', emoji: '🌺', cost: 150, unlockAtStreak: 4, hp: 90, role: 'โจมตีวงกว้าง', description: 'ระเบิดอาคมใส่ผีบริเวณใกล้เคียง', attackDamage: 42, attackRange: 420, attackMs: 2900, splashRadius: 105 },
+  { id: 'fireLotus', name: 'ระเบิดอาคม', emoji: '💣', cost: 150, unlockAtStreak: 4, hp: 90, role: 'ระเบิดพื้นที่', description: 'วางลงบนช่องแล้วระเบิดใน 3 วินาที สร้างความเสียหายแก่ผีในช่องรอบข้าง 1 ช่อง', attackDamage: 90, attackRange: 0, attackMs: 0, splashRadius: 1 },
 ];
 
 export const GHOSTS: GhostConfig[] = [
   { id: 'tanian', name: 'ผีตานี', emoji: '👻', hp: 90, speed: 20, damage: 1, reward: 15, description: 'ตัวไว ชอบลอบเข้าหาฐาน', size: 27 },
   { id: 'krasue', name: 'ผีกระสือ', emoji: '🔮', hp: 120, speed: 15, damage: 1, reward: 20, description: 'ลอยข้ามเสาหลักอาคมได้', flying: true, size: 30 },
   { id: 'pret', name: 'ผีเปรต', emoji: '👹', hp: 260, speed: 9, damage: 2, reward: 30, description: 'อึด เคลื่อนที่ช้า แต่รับความเสียหายได้นาน', size: 36 },
+  { id: 'kongkoi', name: 'ผีกองกอย', emoji: '🦵', hp: 110, speed: 17, damage: 1, reward: 22, description: 'ผีขาเดียวที่กระโดดเปลี่ยนเลนได้เป็นระยะ', size: 30 },
 ];
 
 export const STAGES = [
   { id: 1, name: 'หมู่บ้านใต้แสงจันทร์', subtitle: 'ฝึกตอบคำถามและวางแนวป้องกัน', difficulty: 'ง่าย', enemies: 10, spawnMs: 6500, allowedGhosts: ['tanian'] as GhostId[] },
   { id: 2, name: 'ป่ากล้วยต้องคำสาป', subtitle: 'ผีตานีและผีกระสือเริ่มบุกพร้อมกัน', difficulty: 'ปานกลาง', enemies: 14, spawnMs: 5200, allowedGhosts: ['tanian', 'krasue'] as GhostId[] },
-  { id: 3, name: 'ประตูวัดร้าง', subtitle: 'ระวังผีเปรตผู้ทรงพลัง', difficulty: 'ยาก', enemies: 18, spawnMs: 4100, allowedGhosts: ['tanian', 'krasue', 'pret'] as GhostId[] },
+  { id: 3, name: 'ประตูวัดร้าง', subtitle: 'ระวังผีเปรตผู้ทรงพลัง', difficulty: 'ยาก', enemies: 18, spawnMs: 4100, allowedGhosts: ['tanian', 'krasue', 'pret', 'kongkoi'] as GhostId[] },
 ];
