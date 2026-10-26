@@ -7,6 +7,7 @@ import { importQuestionPackage, loadSave, packageQuestions, validateQuestionPack
 import type { GameSave, PlayerProgress, QuizQuestion } from './types';
 import type { GameStats } from './game/GameScene';
 import { CHARACTER_ATLAS_ROOT_STYLE, CHARACTER_FRAMES, spriteBackgroundStyle } from './data/characterAtlas';
+import { pickUnseenQuestion } from './game/questionSelection';
 import './styles.css';
 
 type Page = 'home' | 'stages' | 'battle' | 'questions' | 'settings' | 'backup';
@@ -17,15 +18,6 @@ function downloadFile(name: string, content: string, type: string) {
   const url = URL.createObjectURL(blob);
   const anchor = document.createElement('a'); anchor.href = url; anchor.download = name; anchor.click();
   window.setTimeout(() => URL.revokeObjectURL(url), 1500);
-}
-
-function pickQuestion(questions: QuizQuestion[], used: Set<string>): QuizQuestion | null {
-  if (!questions.length) return null;
-  let available = questions.filter((q) => !used.has(q.id));
-  if (!available.length) { used.clear(); available = [...questions]; }
-  const q = available[Math.floor(Math.random() * available.length)];
-  used.add(q.id);
-  return q;
 }
 
 export default function App() {
@@ -101,7 +93,7 @@ export default function App() {
       const set = current.sets.find((s) => s.id === current.activeSetId) ?? current.sets[0];
       const qs = current.questions.filter((q) => q.setId === set?.id);
       const pool = qs.length ? qs : current.questions;
-      const question = pickQuestion(pool, usedQuestions.current);
+      const question = pickUnseenQuestion(pool, usedQuestions.current);
       if (!question) { showToast('ยังไม่มีคำถามในชุดนี้ ไปที่จัดการคำถามเพื่อเพิ่มคำถามก่อน'); return; }
       const scene = game.scene.getScene('GameScene');
       scene.scene.pause();
