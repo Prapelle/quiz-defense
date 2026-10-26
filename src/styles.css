@@ -569,6 +569,7 @@ option { color: #f4f7fc; background: #101c31; }
   height: 46px;
   min-height: 46px;
   flex: 0 0 46px;
+  background-image: var(--character-atlas, none);
   background-repeat: no-repeat;
   filter: drop-shadow(0 3px 4px rgba(0,0,0,.22));
 }
@@ -583,6 +584,7 @@ option { color: #f4f7fc; background: #101c31; }
   width: 38px;
   height: 38px;
   flex: 0 0 38px;
+  background-image: var(--character-atlas, none);
   background-repeat: no-repeat;
   filter: drop-shadow(0 2px 4px rgba(0,0,0,.22));
 }
