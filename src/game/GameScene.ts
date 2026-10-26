@@ -392,26 +392,7 @@ export class GameScene extends Phaser.Scene {
       for (const plant of [...this.plants]) this.damagePlant(plant, ghost.boss.stage === 6 ? 14 : 7);
       this.game.events.emit('toast', ghost.boss.stage === 6 ? '🌊 ผีพรายปล่อยคลื่นน้ำโจมตีผู้พิทักษ์ทั่วแผนที่!' : '💃 นางรำปล่อยคลื่นอาคมทั่วสนาม!');
     }
-    if (ghost.boss?.ability === 'tigerShift' && ghost.bossAbilityElapsed >= 5000) {
-      ghost.bossAbilityElapsed = 0;
-      ghost.tigerForm = !ghost.tigerForm;
-      const sprite = ghost.sprite as Phaser.GameObjects.Text;
-      sprite.setText(ghost.tigerForm ? '🐅' : '🧍');
-      sprite.setFontSize(ghost.tigerForm ? '68px' : '58px');
-      ghost.config.speed = ghost.tigerForm ? 18 : 7;
-      ghost.config.damage = ghost.tigerForm ? 42 : 25;
-      if (ghost.tigerForm) {
-        this.game.events.emit('toast', '🐅 ผีสมิงแปลงเป็นเสือและเรียกเสือบริวาร!');
-        for (let i = 0; i < 2; i += 1) {
-          const row = (ghost.row + i + 1) % GAME_SETTINGS.gridRows;
-          const x = Math.min(1125, ghost.x + 35 + i * 24);
-          const y = 154 + row * 83;
-          const sprite = this.add.text(x, y, '🐅', { fontFamily: 'Apple Color Emoji, Segoe UI Emoji, sans-serif', fontSize: '30px', stroke: '#38251b', strokeThickness: 3 }).setOrigin(0.5).setDepth(6);
-          const config: GhostConfig = { id: 'kongkoi', name: 'เสือบริวาร', emoji: '🐅', hp: 95, speed: 23, damage: 9, reward: 0, description: 'เสือบริวารที่ผีสมิงเรียกมา', size: 30 };
-          this.ghosts.push({ config, row, x, y, hp: config.hp, sprite, baseScaleX: sprite.scaleX, baseScaleY: sprite.scaleY, slowUntil: 0, lastAttack: 0 });
-        }
-      } else this.game.events.emit('toast', 'ผีสมิงกลับคืนร่างคน!');
-    }
+
   }
 
   private damagePlant(plant: PlantUnit, damage: number): void {
