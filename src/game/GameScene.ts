@@ -241,7 +241,8 @@ export class GameScene extends Phaser.Scene {
       if (ghost.x < 80) {
         this.health -= ghost.config.damage;
         this.health = Math.max(0, this.health);
-        ghost.sprite.destroy(); (ghost.sprite.getData('hpBar') as Phaser.GameObjects.Graphics | undefined)?.destroy();
+        const hpBar = ghost.sprite.getData('hpBar') as Phaser.GameObjects.Graphics | undefined;
+        hpBar?.destroy(); ghost.sprite.destroy();
         this.ghosts = this.ghosts.filter((g) => g !== ghost);
         this.game.events.emit('toast', `ผีผ่านฐาน! พลังชีวิตเหลือ ${this.health}`);
         this.pushStats();
@@ -277,7 +278,8 @@ export class GameScene extends Phaser.Scene {
     ghost.sprite.setScale(1.12); this.time.delayedCall(80, () => ghost.sprite.active && ghost.sprite.setScale(1));
     if (ghost.hp <= 0) {
       this.kills += 1; this.score += ghost.config.reward;
-      ghost.sprite.destroy(); (ghost.sprite.getData('hpBar') as Phaser.GameObjects.Graphics | undefined)?.destroy();
+      const hpBar = ghost.sprite.getData('hpBar') as Phaser.GameObjects.Graphics | undefined;
+      hpBar?.destroy(); ghost.sprite.destroy();
       this.ghosts = this.ghosts.filter((g) => g !== ghost);
       this.pushStats();
     }
