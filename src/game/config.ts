@@ -60,9 +60,9 @@ export const PLANTS: PlantConfig[] = [
 ];
 
 export const GHOSTS: GhostConfig[] = [
-  { id: 'tanian', name: 'ผีตานี', emoji: '👻', hp: 45, speed: 20, damage: 1, reward: 15, description: 'ตัวไว ชอบลอบเข้าหาฐาน', size: 27 },
-  { id: 'krasue', name: 'ผีกระสือ', emoji: '🔮', hp: 60, speed: 15, damage: 1, reward: 20, description: 'ลอยข้ามเสาหลักอาคมได้', flying: true, size: 30 },
-  { id: 'pret', name: 'ผีเปรต', emoji: '👹', hp: 130, speed: 9, damage: 2, reward: 30, description: 'อึด เคลื่อนที่ช้า แต่รับความเสียหายได้นาน', size: 36 },
+  { id: 'tanian', name: 'ผีตานี', emoji: '👻', hp: 90, speed: 20, damage: 1, reward: 15, description: 'ตัวไว ชอบลอบเข้าหาฐาน', size: 27 },
+  { id: 'krasue', name: 'ผีกระสือ', emoji: '🔮', hp: 120, speed: 15, damage: 1, reward: 20, description: 'ลอยข้ามเสาหลักอาคมได้', flying: true, size: 30 },
+  { id: 'pret', name: 'ผีเปรต', emoji: '👹', hp: 260, speed: 9, damage: 2, reward: 30, description: 'อึด เคลื่อนที่ช้า แต่รับความเสียหายได้นาน', size: 36 },
 ];
 
 export const STAGES = [
