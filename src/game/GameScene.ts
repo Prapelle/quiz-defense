@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { GAME_SETTINGS, GHOSTS, PLANTS, STAGES, type GhostConfig, type PlantConfig, type PlantId, type GhostId } from './config';
 import { CHARACTER_ATLAS_DATA_URL, CHARACTER_FRAME_SIZE, CHARACTER_FRAMES } from '../data/characterAtlas';
+import { GHOST_ATLAS_DATA_URL, GHOST_FRAME_SIZE, GHOST_FRAMES } from '../data/ghostAtlas';
 import { resolvePlantUnlocks, resolveQuizAnswer, targetEnemiesForStage } from './rules';
 import type { GameSettings } from '../types';
 
@@ -45,6 +46,10 @@ export class GameScene extends Phaser.Scene {
     this.load.spritesheet('character-atlas', CHARACTER_ATLAS_DATA_URL, {
       frameWidth: CHARACTER_FRAME_SIZE,
       frameHeight: CHARACTER_FRAME_SIZE,
+    });
+    this.load.spritesheet('ghost-atlas', GHOST_ATLAS_DATA_URL, {
+      frameWidth: GHOST_FRAME_SIZE,
+      frameHeight: GHOST_FRAME_SIZE,
     });
   }
 
@@ -163,9 +168,9 @@ export class GameScene extends Phaser.Scene {
     const row = Math.floor(Math.random() * GAME_SETTINGS.gridRows);
     const x = 1150;
     const y = 154 + row * 83;
-    const ghostFrame = CHARACTER_FRAMES[id];
-    const sprite: Phaser.GameObjects.Image | Phaser.GameObjects.Text = this.textures.exists('character-atlas')
-      ? this.add.image(x, y, 'character-atlas', ghostFrame).setDisplaySize(config.id === 'pret' ? 62 : 56, config.id === 'pret' ? 62 : 56).setDepth(6)
+    const ghostFrame = GHOST_FRAMES[id];
+    const sprite: Phaser.GameObjects.Image | Phaser.GameObjects.Text = this.textures.exists('ghost-atlas')
+      ? this.add.image(x, y, 'ghost-atlas', ghostFrame).setDisplaySize(config.id === 'pret' ? 68 : 58, config.id === 'khomot' ? 62 : 58).setDepth(6)
       : this.add.text(x, y, config.emoji, { fontFamily: 'Apple Color Emoji, Segoe UI Emoji, sans-serif', fontSize: `${config.size}px`, stroke: '#1c1831', strokeThickness: 3 }).setOrigin(0.5).setDepth(6);
     sprite.setData('hpBar', this.add.graphics().setDepth(7));
     this.ghosts.push({ config, row, x, y, hp: config.hp, sprite, slowUntil: 0, lastAttack: 0 });
