@@ -6,7 +6,7 @@ import { GHOSTS, PLANTS, STAGES, type PlantId } from './game/config';
 import { importQuestionPackage, loadSave, packageQuestions, validateQuestionPackage, writeSave } from './storage/database';
 import type { GameSave, PlayerProgress, QuizQuestion } from './types';
 import type { GameStats } from './game/GameScene';
-import { CHARACTER_FRAMES, spriteBackgroundStyle } from './data/characterAtlas';
+import { CHARACTER_ATLAS_ROOT_STYLE, CHARACTER_FRAMES, spriteBackgroundStyle } from './data/characterAtlas';
 import './styles.css';
 
 type Page = 'home' | 'stages' | 'battle' | 'questions' | 'settings' | 'backup';
@@ -188,7 +188,7 @@ export default function App() {
   if (loadingError && !save) return <main className="loading-screen"><div className="logo-mark">☯</div><h1>Quiz Defense</h1><p>เปิดฐานข้อมูลในเครื่องไม่สำเร็จ</p><p className="error-text">{loadingError}</p><button className="button primary" onClick={() => window.location.reload()}>ลองอีกครั้ง</button></main>;
   if (!save) return <main className="loading-screen"><div className="spirit-orb">🪬</div><h1>Quiz Defense</h1><p>กำลังเตรียมคลังคำถามในเครื่อง…</p></main>;
 
-  return <div className="app-shell">
+  return <div className="app-shell" style={CHARACTER_ATLAS_ROOT_STYLE}>
     <header className="topbar">
       <button className="brand" onClick={() => goPage('home')} aria-label="กลับหน้าหลัก"><span className="brand-icon">🧿</span><span><strong>QUIZ <em>DEFENSE</em></strong><small>ศึกหมอผีพิทักษ์อาคม</small></span></button>
       <nav className="main-nav" aria-label="เมนูหลัก">
