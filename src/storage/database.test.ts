@@ -35,9 +35,11 @@ const saveFixture = (): GameSave => ({
 describe('game settings migration', () => {
   it('updates saves using the previous default starting mana to 200', () => {
     expect(migrateGameSettings({ startingMana: 150 }).startingMana).toBe(200);
+    expect(migrateGameSettings({ startingMana: 150 }, 1).startingMana).toBe(200);
   });
 
   it('preserves a deliberate custom starting mana value', () => {
+    expect(migrateGameSettings({ startingMana: 150 }, 2).startingMana).toBe(150);
     expect(migrateGameSettings({ startingMana: 250 }).startingMana).toBe(250);
     expect(migrateGameSettings({ startingMana: 0 }).startingMana).toBe(0);
   });
