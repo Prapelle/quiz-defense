@@ -6,6 +6,8 @@ import { GHOSTS, PLANTS, STAGES, type PlantId } from './game/config';
 import { importQuestionPackage, loadSave, packageQuestions, validateQuestionPackage, writeSave } from './storage/database';
 import type { GameSave, PlayerProgress, QuizQuestion } from './types';
 import type { GameStats } from './game/GameScene';
+import { CHARACTER_ATLAS_ROOT_STYLE, CHARACTER_FRAMES, spriteBackgroundStyle } from './data/characterAtlas';
+import { pickUnseenQuestion } from './game/questionSelection';
 import './styles.css';
 
 type Page = 'home' | 'stages' | 'battle' | 'questions' | 'settings' | 'backup';
@@ -16,15 +18,6 @@ function downloadFile(name: string, content: string, type: string) {
   const url = URL.createObjectURL(blob);
   const anchor = document.createElement('a'); anchor.href = url; anchor.download = name; anchor.click();
   window.setTimeout(() => URL.revokeObjectURL(url), 1500);
-}
-
-function pickQuestion(questions: QuizQuestion[], used: Set<string>): QuizQuestion | null {
-  if (!questions.length) return null;
-  let available = questions.filter((q) => !used.has(q.id));
-  if (!available.length) { used.clear(); available = [...questions]; }
-  const q = available[Math.floor(Math.random() * available.length)];
-  used.add(q.id);
-  return q;
 }
 
 export default function App() {
@@ -100,7 +93,7 @@ export default function App() {
       const set = current.sets.find((s) => s.id === current.activeSetId) ?? current.sets[0];
       const qs = current.questions.filter((q) => q.setId === set?.id);
       const pool = qs.length ? qs : current.questions;
-      const question = pickQuestion(pool, usedQuestions.current);
+      const question = pickUnseenQuestion(pool, usedQuestions.current);
       if (!question) { showToast('ยังไม่มีคำถามในชุดนี้ ไปที่จัดการคำถามเพื่อเพิ่มคำถามก่อน'); return; }
       const scene = game.scene.getScene('GameScene');
       scene.scene.pause();
@@ -187,7 +180,7 @@ export default function App() {
   if (loadingError && !save) return <main className="loading-screen"><div className="logo-mark">☯</div><h1>Quiz Defense</h1><p>เปิดฐานข้อมูลในเครื่องไม่สำเร็จ</p><p className="error-text">{loadingError}</p><button className="button primary" onClick={() => window.location.reload()}>ลองอีกครั้ง</button></main>;
   if (!save) return <main className="loading-screen"><div className="spirit-orb">🪬</div><h1>Quiz Defense</h1><p>กำลังเตรียมคลังคำถามในเครื่อง…</p></main>;
 
-  return <div className="app-shell">
+  return <div className="app-shell" style={CHARACTER_ATLAS_ROOT_STYLE}>
     <header className="topbar">
       <button className="brand" onClick={() => goPage('home')} aria-label="กลับหน้าหลัก"><span className="brand-icon">🧿</span><span><strong>QUIZ <em>DEFENSE</em></strong><small>ศึกหมอผีพิทักษ์อาคม</small></span></button>
       <nav className="main-nav" aria-label="เมนูหลัก">
@@ -219,11 +212,11 @@ export default function App() {
     {page === 'battle' && <main className="battle-page">
       <div className="battle-header"><div><p className="eyebrow">STAGE {selectedStage} · DEFENSE MODE</p><h1>{STAGES.find((s) => s.id === selectedStage)?.name}</h1></div><div className="battle-mini-stats"><span>☀ <b>{stats.mana}</b></span><span>❤ <b>{stats.health}/{save.settings.baseHealth}</b></span><span>★ <b>{stats.score}</b></span><button className="button ghost compact" onClick={() => goPage('stages')}>ออกจากด่าน</button></div></div>
       <div className="battle-layout">
-        <section className="game-board-panel"><GameCanvas key={`game-${selectedStage}-${page}`} stage={selectedStage} onReady={setGame} /><div className="board-footer"><span>🟢 แตะช่องในสนามเพื่อวางผู้พิทักษ์</span><span>ด่าน {selectedStage} · ผีที่เกิด {stats.spawned}/{stats.target}</span></div></section>
+        <section className="game-board-panel"><GameCanvas key={`game-${selectedStage}-${page}`} stage={selectedStage} onReady={setGame} /><div className="board-footer"><span>🟢 แตะช่องในสนามเพื่อวางผู้พิทักษ์</span><span>ด่าน {selectedStage} · ผีที่เกิด {stats.spawned}/{stats.target}</span></div><section className="panel plant-panel"><div className="panel-title"><span>🌱 เลือกผู้พิทักษ์</span><span className="muted-small">แตะเพื่อเลือก</span></div><div className="plant-picker">{PLANTS.map((plant) => <button key={plant.id} className={`plant-card ${selectedPlant === plant.id ? 'chosen' : ''} ${stats.mana < plant.cost ? 'unaffordable' : ''}`} onClick={() => { setSelectedPlant(plant.id); if (game) game.scene.getScene('GameScene').events.emit('selected-plant', plant.id); }}><span className="plant-portrait" style={spriteBackgroundStyle(CHARACTER_FRAMES[plant.id], 46)} role="img" aria-label={plant.name} /><strong>{plant.name}</strong><small>{plant.role}</small><span className="plant-cost">☀ {plant.cost}</span></button>)}</div><p className="selected-tip">{PLANTS.find((p) => p.id === selectedPlant)?.description}</p></section></section>
         <aside className="battle-sidebar">
           <section className="panel mana-panel"><div className="panel-title"><span>☀ พลังอาคม</span><strong>{stats.mana}</strong></div><div className="mana-track"><span style={{ width: `${Math.min(100, stats.mana / 3)}%` }} /></div><button className="button quiz-button" disabled={!game || stats.status !== 'playing'} onClick={() => game?.events.emit('quiz-requested')}>❔ ท้าทายความรู้ <small>ตอบถูก +{save.settings.rewardCorrect} พลัง</small></button><div className="streak-note">{stats.streak > 0 ? `🔥 ตอบถูกต่อเนื่อง ${stats.streak} ข้อ` : 'ตอบถูกต่อเนื่องเพื่อรับโบนัส'}</div></section>
-          <section className="panel plant-panel"><div className="panel-title"><span>🌱 เลือกผู้พิทักษ์</span><span className="muted-small">แตะเพื่อเลือก</span></div><div className="plant-picker">{PLANTS.map((plant) => <button key={plant.id} className={`plant-card ${selectedPlant === plant.id ? 'chosen' : ''} ${stats.mana < plant.cost ? 'unaffordable' : ''}`} onClick={() => { setSelectedPlant(plant.id); if (game) game.scene.getScene('GameScene').events.emit('selected-plant', plant.id); }}><span className="plant-emoji">{plant.emoji}</span><strong>{plant.name}</strong><small>{plant.role}</small><span className="plant-cost">☀ {plant.cost}</span></button>)}</div><p className="selected-tip">{PLANTS.find((p) => p.id === selectedPlant)?.description}</p></section>
-          <section className="panel enemy-panel"><div className="panel-title"><span>👻 สารานุกรมผี</span><button className="text-button" onClick={() => showToast('ผีแต่ละชนิดมีพลังชีวิตและความเร็วแตกต่างกัน วางผู้พิทักษ์ให้ตรงเลน!')}>ⓘ วิธีรับมือ</button></div><div className="ghost-mini-list">{GHOSTS.map((ghost) => <div key={ghost.id} className="ghost-mini"><span>{ghost.emoji}</span><div><strong>{ghost.name}</strong><small>{ghost.description}</small></div><em>{ghost.hp} HP</em></div>)}</div></section>
+          
+          <section className="panel enemy-panel"><div className="panel-title"><span>👻 สารานุกรมผี</span><button className="text-button" onClick={() => showToast('ผีแต่ละชนิดมีพลังชีวิตและความเร็วแตกต่างกัน วางผู้พิทักษ์ให้ตรงเลน!')}>ⓘ วิธีรับมือ</button></div><div className="ghost-mini-list">{GHOSTS.map((ghost) => <div key={ghost.id} className="ghost-mini"><span className="ghost-portrait" style={spriteBackgroundStyle(CHARACTER_FRAMES[ghost.id], 38)} role="img" aria-label={ghost.name} /><div><strong>{ghost.name}</strong><small>{ghost.description}</small></div><em>{ghost.hp} HP</em></div>)}</div></section>
         </aside>
       </div>
       {questionModal && currentQuestion && <div className="modal-backdrop"><section className="quiz-modal" role="dialog" aria-modal="true" aria-label="ตอบคำถาม"><div className="quiz-modal-top"><span className="quiz-sigil">✦</span><div><p className="eyebrow">คำท้าทายจากตำราอาคม</p><h2>ตอบให้ถูกเพื่อรับพลัง!</h2></div><button className="close-modal" disabled={questionAnswer === null} onClick={() => setQuestionModal(false)}>×</button></div><div className="quiz-meta"><span>{currentQuestion.subject}</span><span>{currentQuestion.grade}</span><span>{currentQuestion.difficulty}</span></div><p className="quiz-question-text">{currentQuestion.question}</p><div className="quiz-options">{currentQuestion.choices.map((choice, i) => { const answered = questionAnswer !== null; const isCorrect = i === currentQuestion.answerIndex; return <button key={i} disabled={answered} className={`quiz-option ${answered && isCorrect ? 'correct' : ''} ${answered && questionAnswer === i && !isCorrect ? 'wrong' : ''}`} onClick={() => answerQuestion(i)}><span>{String.fromCharCode(65 + i)}</span>{choice}{answered && isCorrect && <b>✓</b>}</button>; })}</div>{questionAnswer !== null && <div className={`explanation-box ${questionAnswer === currentQuestion.answerIndex ? 'good' : 'try-again'}`}><strong>{questionAnswer === currentQuestion.answerIndex ? '✨ เยี่ยมมาก ตอบถูก!' : '🌱 ไม่เป็นไร ลองเรียนรู้จากเฉลยนะ'}</strong><p>{currentQuestion.explanation || `คำตอบที่ถูกคือ ${currentQuestion.choices[currentQuestion.answerIndex]}`}</p><button className="button primary" onClick={() => { setQuestionModal(false); game?.scene.getScene('GameScene').scene.resume(); }}>กลับไปป้องกันหมู่บ้าน</button></div>}</section></div>}
