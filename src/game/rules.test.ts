@@ -28,14 +28,12 @@ describe('resolveQuizAnswer', () => {
 });
 
 describe('targetEnemiesForStage', () => {
-  it('scales enemy counts for the three configured stages', () => {
-    expect(targetEnemiesForStage(1, 14)).toBe(10);
-    expect(targetEnemiesForStage(2, 14)).toBe(14);
-    expect(targetEnemiesForStage(3, 14)).toBe(18);
+  it('scales enemy counts across all nine campaign stages', () => {
+    expect(Array.from({ length: 9 }, (_, index) => targetEnemiesForStage(index + 1, 14))).toEqual([10, 15, 20, 25, 30, 35, 40, 45, 50]);
   });
 
   it('clamps unsupported stage values and keeps a minimum wave size', () => {
-    expect(targetEnemiesForStage(100, 14)).toBe(18);
+    expect(targetEnemiesForStage(100, 14)).toBe(50);
     expect(targetEnemiesForStage(-2, 14)).toBe(10);
     expect(targetEnemiesForStage(2, 0)).toBe(5);
   });
