@@ -43,6 +43,8 @@ export interface GameSettings {
 }
 
 export interface GameSave {
+  /** Version of the defaults/settings migration already applied to this local save. */
+  settingsVersion?: number;
   questions: QuizQuestion[];
   sets: QuestionSet[];
   progress: PlayerProgress;
