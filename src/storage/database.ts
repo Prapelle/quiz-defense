@@ -6,6 +6,7 @@ const DB_NAME = 'quiz-defense-local';
 const DB_VERSION = 1;
 const STORE = 'app-state';
 const KEY = 'save-v1';
+const LEGACY_DEFAULT_STARTING_MANA = 150;
 
 const initialSave = (): GameSave => ({
   questions: DEFAULT_QUESTIONS,
@@ -76,6 +77,14 @@ export async function writeSave(save: GameSave): Promise<void> {
   }
 }
 
+export function migrateGameSettings(input: Partial<GameSettings> | undefined): GameSettings {
+  const fresh = initialSave().settings;
+  const merged = { ...fresh, ...(input ?? {}) };
+  // Upgrade saves with the previous default, while preserving deliberate custom values.
+  if (input?.startingMana === LEGACY_DEFAULT_STARTING_MANA) merged.startingMana = GAME_SETTINGS.startingMana;
+  return merged;
+}
+
 function mergeSave(input: Partial<GameSave>): GameSave {
   const fresh = initialSave();
   return {
@@ -84,7 +93,7 @@ function mergeSave(input: Partial<GameSave>): GameSave {
     questions: Array.isArray(input.questions) ? input.questions : fresh.questions,
     sets: Array.isArray(input.sets) ? input.sets : fresh.sets,
     progress: { ...fresh.progress, ...(input.progress ?? {}) },
-    settings: { ...fresh.settings, ...(input.settings ?? {}) },
+    settings: migrateGameSettings(input.settings),
     activeSetId: typeof input.activeSetId === 'string' ? input.activeSetId : fresh.activeSetId,
   };
 }
