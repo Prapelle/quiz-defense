@@ -20,7 +20,7 @@ export interface GameStats {
   status: 'playing' | 'won' | 'lost';
 }
 interface PlantUnit { config: PlantConfig; row: number; col: number; x: number; y: number; hp: number; sprite: Phaser.GameObjects.Image | Phaser.GameObjects.Text; lastAction: number; }
-interface GhostUnit { config: GhostConfig; row: number; x: number; y: number; hp: number; sprite: Phaser.GameObjects.Image | Phaser.GameObjects.Text; slowUntil: number; lastAttack: number; }
+interface GhostUnit { config: GhostConfig; row: number; x: number; y: number; hp: number; sprite: Phaser.GameObjects.Image | Phaser.GameObjects.Text; baseScaleX: number; baseScaleY: number; slowUntil: number; lastAttack: number; }
 interface Projectile { circle: Phaser.GameObjects.Arc; x: number; y: number; target: GhostUnit; speed: number; damage: number; splash: number; slowMs?: number; }
 
 export class GameScene extends Phaser.Scene {
@@ -86,7 +86,7 @@ export class GameScene extends Phaser.Scene {
     this.simulationTime += scaledDelta;
     // Quiz cooldown is wall-clock time, independent of accelerated battle speed.
     this.quizElapsed += realDelta;
-    if (this.quizElapsed >= 30000 && !this.quizModalOpen) {
+    if (this.quizElapsed >= GAME_SETTINGS.questionIntervalMs && !this.quizModalOpen) {
       this.quizElapsed = 0;
       this.quizReady = true;
       this.requestQuiz();
@@ -276,7 +276,7 @@ export class GameScene extends Phaser.Scene {
       ? this.add.image(x, y, 'character-atlas', ghostFrame).setDisplaySize(config.id === 'pret' ? 62 : 56, config.id === 'pret' ? 62 : 56).setDepth(6)
       : this.add.text(x, y, config.emoji, { fontFamily: 'Apple Color Emoji, Segoe UI Emoji, sans-serif', fontSize: `${config.size}px`, stroke: '#1c1831', strokeThickness: 3 }).setOrigin(0.5).setDepth(6);
     sprite.setData('hpBar', this.add.graphics().setDepth(7));
-    this.ghosts.push({ config, row, x, y, hp: config.hp, sprite, slowUntil: 0, lastAttack: 0 });
+    this.ghosts.push({ config, row, x, y, hp: config.hp, sprite, baseScaleX: sprite.scaleX, baseScaleY: sprite.scaleY, slowUntil: 0, lastAttack: 0 });
     this.spawned += 1;
     this.pushStats();
   }
@@ -359,7 +359,7 @@ export class GameScene extends Phaser.Scene {
   private damageGhost(ghost: GhostUnit, damage: number): void {
     if (!this.ghosts.includes(ghost)) return;
     ghost.hp -= damage;
-    ghost.sprite.setScale(1.12); this.time.delayedCall(80, () => ghost.sprite.active && ghost.sprite.setScale(1));
+    ghost.sprite.setScale(ghost.baseScaleX * 1.12, ghost.baseScaleY * 1.12); this.time.delayedCall(80, () => { if (ghost.sprite.active) ghost.sprite.setScale(ghost.baseScaleX, ghost.baseScaleY); });
     if (ghost.hp <= 0) {
       this.kills += 1; this.score += ghost.config.reward;
       this.mana += GAME_SETTINGS.killManaReward;
@@ -374,7 +374,7 @@ export class GameScene extends Phaser.Scene {
   private requestQuiz(): void {
     if (this.status !== 'playing' || this.quizModalOpen) return;
     if (!this.quizReady) {
-      this.game.events.emit('toast', `คำถามถัดไปจะมาใน ${Math.max(1, Math.ceil((30000 - this.quizElapsed) / 1000))} วินาที`);
+      this.game.events.emit('toast', `คำถามถัดไปจะมาใน ${Math.max(1, Math.ceil((GAME_SETTINGS.questionIntervalMs - this.quizElapsed) / 1000))} วินาที`);
       return;
     }
     this.quizModalOpen = true;
