@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { resolveQuizAnswer, targetEnemiesForStage } from './rules';
+import { resolvePlantUnlocks, resolveQuizAnswer, targetEnemiesForStage } from './rules';
 
 describe('resolveQuizAnswer', () => {
   it('awards energy and points for a correct answer', () => {
@@ -38,5 +38,26 @@ describe('targetEnemiesForStage', () => {
     expect(targetEnemiesForStage(100, 14)).toBe(18);
     expect(targetEnemiesForStage(-2, 14)).toBe(10);
     expect(targetEnemiesForStage(2, 0)).toBe(5);
+  });
+});
+
+describe('resolvePlantUnlocks', () => {
+  it('unlocks only the plants earned by a correct-answer streak', () => {
+    expect(resolvePlantUnlocks(1, ['kumarn', 'lotus'])).toEqual({
+      unlockedPlants: ['kumarn', 'lotus'],
+      newlyUnlocked: [],
+    });
+    expect(resolvePlantUnlocks(2, ['kumarn', 'lotus'])).toEqual({
+      unlockedPlants: ['kumarn', 'lotus', 'bindLotus'],
+      newlyUnlocked: ['bindLotus'],
+    });
+    expect(resolvePlantUnlocks(4, ['kumarn', 'lotus', 'bindLotus', 'ward'])).toEqual({
+      unlockedPlants: ['kumarn', 'lotus', 'bindLotus', 'ward', 'fireLotus'],
+      newlyUnlocked: ['fireLotus'],
+    });
+  });
+
+  it('does not announce an already unlocked plant twice', () => {
+    expect(resolvePlantUnlocks(4, ['kumarn', 'lotus', 'bindLotus', 'ward', 'fireLotus']).newlyUnlocked).toEqual([]);
   });
 });
