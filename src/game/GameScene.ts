@@ -16,7 +16,7 @@ export interface GameStats {
   stageName: string;
   status: 'playing' | 'won' | 'lost';
 }
-interface PlantUnit { config: PlantConfig; row: number; col: number; x: number; y: number; hp: number; sprite: Phaser.GameObjects.Image | Phaser.GameObjects.Text; lastAction: number; }
+interface PlantUnit { config: PlantConfig; row: number; col: number; x: number; y: number; hp: number; sprite: Phaser.GameObjects.Image | Phaser.GameObjects.Text; lastAction: number; explodeAt?: number; }
 interface GhostUnit { config: GhostConfig; row: number; x: number; y: number; hp: number; sprite: Phaser.GameObjects.Image | Phaser.GameObjects.Text; slowUntil: number; lastAttack: number; }
 interface Projectile { circle: Phaser.GameObjects.Arc; x: number; y: number; target: GhostUnit; speed: number; damage: number; splash: number; slowMs?: number; }
 
@@ -154,7 +154,8 @@ export class GameScene extends Phaser.Scene {
     const ring = this.add.graphics().lineStyle(2, 0xf9d983, 0.7).strokeCircle(px, py + 6, 29).setDepth(4);
     // Ring follows plant life without using remote art assets.
     sprite.setData('ring', ring);
-    this.plants.push({ config, row, col, x: px, y: py, hp: config.hp, sprite, lastAction: this.time.now });
+    this.plants.push({ config, row, col, x: px, y: py, hp: config.hp, sprite, lastAction: this.time.now, explodeAt: config.id === 'fireLotus' ? this.time.now + 3000 : undefined });
+    if (config.id === 'fireLotus') this.game.events.emit('toast', 'วางระเบิดอาคมแล้ว! จะระเบิดใน 3 วินาที');
     this.pushStats();
   }
 
@@ -174,6 +175,10 @@ export class GameScene extends Phaser.Scene {
   }
 
   private updatePlant(plant: PlantUnit, now: number): void {
+    if (plant.config.id === 'fireLotus') {
+      if (plant.explodeAt !== undefined && now >= plant.explodeAt) this.explodeBomb(plant);
+      return;
+    }
     if (plant.config.manaEveryMs && now - plant.lastAction >= plant.config.manaEveryMs) {
       plant.lastAction = now;
       this.mana += 15;
@@ -188,7 +193,31 @@ export class GameScene extends Phaser.Scene {
     this.projectiles.push({ circle, x: plant.x + 22, y: plant.y - 7, target, speed: 420, damage: plant.config.attackDamage, splash: plant.config.splashRadius ?? 0, slowMs: plant.config.slowMs });
   }
 
+  private explodeBomb(bomb: PlantUnit): void {
+    if (!this.plants.includes(bomb)) return;
+    const blast = this.add.circle(bomb.x, bomb.y, 18, 0xffa23a, 0.9).setStrokeStyle(4, 0xffe7a3).setDepth(12);
+    this.tweens.add({ targets: blast, radius: 92, alpha: 0, duration: 360, onComplete: () => blast.destroy() });
+    for (const ghost of [...this.ghosts]) {
+      const ghostCol = Math.floor((ghost.x - 158) / 104);
+      if (Math.abs(ghost.row - bomb.row) <= 1 && Math.abs(ghostCol - bomb.col) <= 1) this.damageGhost(ghost, bomb.config.attackDamage);
+    }
+    const ring = bomb.sprite.getData('ring') as Phaser.GameObjects.Graphics | undefined;
+    ring?.destroy(); bomb.sprite.destroy();
+    this.plants = this.plants.filter((plant) => plant !== bomb);
+    this.game.events.emit('toast', 'ระเบิดอาคมทำงานแล้ว!');
+  }
+
   private updateGhost(ghost: GhostUnit, now: number, delta: number): void {
+    // กองกอยกระโดดเปลี่ยนเลนเป็นระยะ
+    if (ghost.config.id === 'kongkoi' && now - ghost.lastAttack >= 2600) {
+      ghost.lastAttack = now;
+      const nextRow = (ghost.row + 1 + Math.floor(Math.random() * (GAME_SETTINGS.gridRows - 1))) % GAME_SETTINGS.gridRows;
+      ghost.row = nextRow;
+      ghost.y = 154 + nextRow * 83;
+      ghost.sprite.setY(ghost.y);
+      const hop = this.add.text(ghost.x, ghost.y - 22, '↟', { fontSize: '22px', color: '#ffe5b0', stroke: '#38231c', strokeThickness: 3 }).setOrigin(0.5).setDepth(10);
+      this.tweens.add({ targets: hop, y: ghost.y - 42, alpha: 0, duration: 300, onComplete: () => hop.destroy() });
+    }
     const blocker = this.plants.find((p) => p.row === ghost.row && Math.abs(p.x - ghost.x) < 30 && (!ghost.config.flying || p.config.id !== 'ward'));
     if (blocker) {
       if (now - ghost.lastAttack > 920) {
