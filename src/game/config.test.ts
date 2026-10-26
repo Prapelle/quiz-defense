@@ -7,6 +7,17 @@ describe('game configuration', () => {
     expect(GAME_SETTINGS.killManaReward).toBe(5);
   });
 
+  it('asks a quiz every 15 seconds of real time', () => {
+    expect(GAME_SETTINGS.questionIntervalMs).toBe(15000);
+  });
+
+  it('sets Kumarn to generate 10 mana every five seconds', () => {
+    const kumarn = PLANTS.find((plant) => plant.id === 'kumarn')!;
+    expect(kumarn.manaEveryMs).toBe(5000);
+    expect(kumarn.manaGain).toBe(10);
+    expect(kumarn.description).toContain('+10');
+  });
+
   it('increases ghost attack damage by type', () => {
     expect(GHOSTS.map((ghost) => ghost.damage)).toEqual([5, 9, 15]);
   });
