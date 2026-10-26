@@ -66,7 +66,7 @@ export const GHOSTS: GhostConfig[] = [
 ];
 
 export const STAGES = [
-  { id: 1, name: 'หมู่บ้านใต้แสงจันทร์', subtitle: 'ฝึกตอบคำถามและวางแนวป้องกัน', difficulty: 'ง่าย', enemies: 10, spawnMs: 6500, allowedGhosts: ['tanian'] as GhostId[] },
-  { id: 2, name: 'ป่ากล้วยต้องคำสาป', subtitle: 'ผีตานีและผีกระสือเริ่มบุกพร้อมกัน', difficulty: 'ปานกลาง', enemies: 14, spawnMs: 5200, allowedGhosts: ['tanian', 'krasue'] as GhostId[] },
-  { id: 3, name: 'ประตูวัดร้าง', subtitle: 'ระวังผีเปรตผู้ทรงพลัง', difficulty: 'ยาก', enemies: 18, spawnMs: 4100, allowedGhosts: ['tanian', 'krasue', 'pret'] as GhostId[] },
+  { id: 1, name: 'หมู่บ้านใต้แสงจันทร์', subtitle: 'ฝึกตอบคำถามและวางแนวป้องกัน', difficulty: 'ง่าย', enemies: 10, waves: [3, 3, 4], waveBreakMs: 5000, spawnMs: 6500, allowedGhosts: ['tanian'] as GhostId[] },
+  { id: 2, name: 'ป่ากล้วยต้องคำสาป', subtitle: 'ผีตานีและผีกระสือเริ่มบุกพร้อมกัน', difficulty: 'ปานกลาง', enemies: 14, waves: [4, 4, 6], waveBreakMs: 4500, spawnMs: 5200, allowedGhosts: ['tanian', 'krasue'] as GhostId[] },
+  { id: 3, name: 'ประตูวัดร้าง', subtitle: 'ระวังผีเปรตผู้ทรงพลัง', difficulty: 'ยาก', enemies: 18, waves: [4, 6, 8], waveBreakMs: 3500, spawnMs: 4100, allowedGhosts: ['tanian', 'krasue', 'pret'] as GhostId[] },
 ];
