@@ -17,7 +17,7 @@ export interface GameStats {
   status: 'playing' | 'won' | 'lost';
 }
 interface PlantUnit { config: PlantConfig; row: number; col: number; x: number; y: number; hp: number; sprite: Phaser.GameObjects.Image | Phaser.GameObjects.Text | Phaser.GameObjects.Graphics; lastAction: number; explodeAt?: number; }
-interface GhostUnit { config: GhostConfig; row: number; x: number; y: number; hp: number; sprite: Phaser.GameObjects.Image | Phaser.GameObjects.Text; slowUntil: number; lastAttack: number; }
+interface GhostUnit { config: GhostConfig; row: number; x: number; y: number; hp: number; sprite: Phaser.GameObjects.Image | Phaser.GameObjects.Text; slowUntil: number; lastAttack: number; lastHop: number; }
 interface Projectile { circle: Phaser.GameObjects.Arc; x: number; y: number; target: GhostUnit; speed: number; damage: number; splash: number; slowMs?: number; }
 
 export class GameScene extends Phaser.Scene {
@@ -188,7 +188,7 @@ export class GameScene extends Phaser.Scene {
       ? this.add.image(x, y, 'character-atlas', ghostFrame).setDisplaySize(config.id === 'pret' ? 62 : 56, config.id === 'pret' ? 62 : 56).setDepth(6)
       : this.add.text(x, y, config.emoji, { fontFamily: 'Apple Color Emoji, Segoe UI Emoji, sans-serif', fontSize: `${config.size}px`, stroke: '#1c1831', strokeThickness: 3 }).setOrigin(0.5).setDepth(6);
     sprite.setData('hpBar', this.add.graphics().setDepth(7));
-    this.ghosts.push({ config, row, x, y, hp: config.hp, sprite, slowUntil: 0, lastAttack: 0 });
+    this.ghosts.push({ config, row, x, y, hp: config.hp, sprite, slowUntil: 0, lastAttack: 0, lastHop: this.time.now });
     this.spawned += 1;
     this.pushStats();
   }
@@ -227,15 +227,24 @@ export class GameScene extends Phaser.Scene {
   }
 
   private updateGhost(ghost: GhostUnit, now: number, delta: number): void {
-    // กองกอยกระโดดเปลี่ยนเลนเป็นระยะ
-    if (ghost.config.id === 'kongkoi' && now - ghost.lastAttack >= 2600) {
-      ghost.lastAttack = now;
-      const nextRow = (ghost.row + 1 + Math.floor(Math.random() * (GAME_SETTINGS.gridRows - 1))) % GAME_SETTINGS.gridRows;
-      ghost.row = nextRow;
-      ghost.y = 154 + nextRow * 83;
-      ghost.sprite.setY(ghost.y);
-      const hop = this.add.text(ghost.x, ghost.y - 22, '↟', { fontSize: '22px', color: '#ffe5b0', stroke: '#38231c', strokeThickness: 3 }).setOrigin(0.5).setDepth(10);
-      this.tweens.add({ targets: hop, y: ghost.y - 42, alpha: 0, duration: 300, onComplete: () => hop.destroy() });
+    // กองกอยกระโดดไปยังเลนข้างเคียงเป็นระยะ และเริ่มหลบเมื่อ HP ต่ำกว่า 50%
+    if (ghost.config.id === 'kongkoi') {
+      const lowHealth = ghost.hp <= ghost.config.hp * 0.5;
+      const hopInterval = lowHealth ? 1800 : 2600;
+      if (now - ghost.lastHop >= hopInterval) {
+        ghost.lastHop = now;
+        const adjacentRows = [ghost.row - 1, ghost.row + 1].filter((row) => row >= 0 && row < GAME_SETTINGS.gridRows);
+        if (adjacentRows.length > 0) {
+          const nextRow = lowHealth
+            ? adjacentRows[Math.floor(Math.random() * adjacentRows.length)]
+            : adjacentRows[Math.floor(Math.random() * adjacentRows.length)];
+          ghost.row = nextRow;
+          ghost.y = 154 + nextRow * 83;
+          ghost.sprite.setY(ghost.y);
+          const hop = this.add.text(ghost.x, ghost.y - 22, '↟', { fontSize: '22px', color: '#ffe5b0', stroke: '#38231c', strokeThickness: 3 }).setOrigin(0.5).setDepth(10);
+          this.tweens.add({ targets: hop, y: ghost.y - 42, alpha: 0, duration: 300, onComplete: () => hop.destroy() });
+        }
+      }
     }
     const blocker = this.plants.find((p) => p.row === ghost.row && Math.abs(p.x - ghost.x) < 30 && (!ghost.config.flying || p.config.id !== 'ward'));
     if (blocker) {
