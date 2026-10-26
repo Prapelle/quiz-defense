@@ -12,6 +12,9 @@ export interface GameStats {
   spawned: number;
   target: number;
   streak: number;
+  wave: number;
+  totalWaves: number;
+  waveWaiting: boolean;
   unlockedPlants: PlantId[];
   stageName: string;
   status: 'playing' | 'won' | 'lost';
@@ -35,6 +38,8 @@ export class GameScene extends Phaser.Scene {
   private unlockedPlants = new Set<PlantId>(PLANTS.filter((plant) => plant.unlockAtStreak === 0).map((plant) => plant.id));
   private status: GameStats['status'] = 'playing';
   private spawnElapsed = 0;
+  private waveBreakElapsed = 0;
+  private waveWaiting = false;
   private uiTexts = new Map<string, Phaser.GameObjects.Text>();
   private gameSettings: GameSettings = { rewardCorrect: GAME_SETTINGS.rewardCorrect, startingMana: GAME_SETTINGS.startingMana, baseHealth: GAME_SETTINGS.baseHealth, questionStreakBonus: GAME_SETTINGS.questionStreakBonus, questionStreakEvery: GAME_SETTINGS.questionStreakEvery, enemySpawnMs: GAME_SETTINGS.enemySpawnMs, maxEnemies: GAME_SETTINGS.maxEnemies, questionCooldownMs: GAME_SETTINGS.questionCooldownMs };
 
@@ -66,11 +71,28 @@ export class GameScene extends Phaser.Scene {
     if (this.status !== 'playing') return;
     this.spawnElapsed += delta;
     const stageConfig = STAGES.find((s) => s.id === this.stage) ?? STAGES[0];
+    const waves: number[] = stageConfig.waves ?? [stageConfig.enemies];
     const targetEnemies = this.targetEnemies();
-    const spawnInterval = Math.max(2200, Math.round(this.gameSettings.enemySpawnMs * stageConfig.spawnMs / GAME_SETTINGS.enemySpawnMs));
-    if (this.spawned < targetEnemies && this.spawnElapsed >= spawnInterval) {
-      this.spawnElapsed = 0;
-      this.spawnGhost(stageConfig.allowedGhosts[this.spawned % stageConfig.allowedGhosts.length]);
+    const waveStart = waves.slice(0, this.waveIndex()).reduce((sum, count) => sum + count, 0);
+    const waveTarget = waves[this.waveIndex()] ?? 0;
+    const spawnedInWave = Math.max(0, this.spawned - waveStart);
+    const waveComplete = spawnedInWave >= waveTarget;
+    if (waveComplete && this.waveIndex() < waves.length - 1 && this.ghosts.length === 0) {
+      this.waveWaiting = true;
+      this.waveBreakElapsed += delta;
+      if (this.waveBreakElapsed >= stageConfig.waveBreakMs) {
+        this.waveBreakElapsed = 0;
+        this.waveWaiting = false;
+        this.spawnElapsed = 0;
+        this.game.events.emit('toast', `Wave ${this.waveIndex() + 2} กำลังมา!`);
+      }
+    } else if (!waveComplete && !this.waveWaiting) {
+      this.spawnElapsed += 0;
+      const spawnInterval = Math.max(2200, Math.round(this.gameSettings.enemySpawnMs * stageConfig.spawnMs / GAME_SETTINGS.enemySpawnMs));
+      if (this.spawned < targetEnemies && this.spawnElapsed >= spawnInterval) {
+        this.spawnElapsed = 0;
+        this.spawnGhost(stageConfig.allowedGhosts[this.spawned % stageConfig.allowedGhosts.length]);
+      }
     }
     const now = this.time.now;
     for (const plant of [...this.plants]) this.updatePlant(plant, now);
@@ -276,7 +298,7 @@ export class GameScene extends Phaser.Scene {
     this.plants = []; this.ghosts = []; this.projectiles = [];
     this.stage = Math.max(1, Math.min(3, stage));
     this.mana = this.gameSettings.startingMana; this.health = this.gameSettings.baseHealth; this.score = 0; this.kills = 0; this.spawned = 0; this.streak = 0;
-    this.spawnElapsed = 0; this.status = 'playing'; this.selectedPlant = 'lotus';
+    this.spawnElapsed = 0; this.waveBreakElapsed = 0; this.waveWaiting = false; this.status = 'playing'; this.selectedPlant = 'lotus';
     this.unlockedPlants = new Set(PLANTS.filter((plant) => plant.unlockAtStreak === 0).map((plant) => plant.id));
     this.pushStats();
   }
@@ -289,13 +311,24 @@ export class GameScene extends Phaser.Scene {
     this.pushStats();
   }
 
+  private waveIndex(): number {
+    const stage = STAGES.find((item) => item.id === this.stage) ?? STAGES[0];
+    const waves: number[] = stage.waves ?? [stage.enemies];
+    let count = 0;
+    for (let i = 0; i < waves.length; i += 1) {
+      count += waves[i];
+      if (this.spawned < count) return i;
+    }
+    return Math.max(0, waves.length - 1);
+  }
+
   private targetEnemies(): number {
     return targetEnemiesForStage(this.stage, this.gameSettings.maxEnemies);
   }
 
   private getStats(): GameStats {
     const config = STAGES.find((s) => s.id === this.stage) ?? STAGES[0];
-    return { mana: this.mana, health: this.health, score: this.score, kills: this.kills, spawned: this.spawned, target: this.targetEnemies(), streak: this.streak, unlockedPlants: [...this.unlockedPlants], stageName: config.name, status: this.status };
+    return { mana: this.mana, health: this.health, score: this.score, kills: this.kills, spawned: this.spawned, target: this.targetEnemies(), streak: this.streak, wave: this.waveIndex() + 1, totalWaves: (STAGES.find((s) => s.id === this.stage)?.waves ?? [this.targetEnemies()]).length, waveWaiting: this.waveWaiting, unlockedPlants: [...this.unlockedPlants], stageName: config.name, status: this.status };
   }
 
   private pushStats(): void {
