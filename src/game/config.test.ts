@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { GAME_SETTINGS, GHOSTS, PLANTS, STAGES } from './config';
+import { BOSSES, GAME_SETTINGS, GHOSTS, PLANTS, STAGES } from './config';
 
 describe('game configuration', () => {
   it('starts with 200 mana and grants 5 mana for each ghost defeated', () => {
@@ -80,6 +80,15 @@ describe('game configuration', () => {
     expect(GHOSTS.find((ghost) => ghost.id === 'maemai')?.speedAuraRadius).toBeGreaterThan(0);
     expect(GHOSTS.find((ghost) => ghost.id === 'taihong')?.deathBurstDamage).toBeGreaterThan(0);
     expect(GHOSTS.find((ghost) => ghost.id === 'khomot')?.damageReduction).toBe(0.25);
+  });
+
+  it('defines bosses for stages 3, 6 and 9 with the requested mechanics', () => {
+    expect(BOSSES.map((boss) => boss.stage)).toEqual([3, 6, 9]);
+    expect(BOSSES.map((boss) => boss.ability)).toEqual(['waterSurge', 'waterSurge', 'tigerShift']);
+    expect(BOSSES[0].name).toContain('นางรำ');
+    expect(BOSSES[1].name).toContain('ผีพราย');
+    expect(BOSSES[2].name).toContain('สมิง');
+    expect(BOSSES.every((boss) => boss.hp > 0 && boss.damage > 0 && boss.reward > 0)).toBe(true);
   });
 
   it('keeps five lanes and an increasing nine-stage difficulty curve', () => {
