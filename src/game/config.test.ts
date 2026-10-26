@@ -2,6 +2,15 @@ import { describe, expect, it } from 'vitest';
 import { GAME_SETTINGS, GHOSTS, PLANTS, STAGES } from './config';
 
 describe('game configuration', () => {
+  it('starts with 200 mana and grants 5 mana for each ghost defeated', () => {
+    expect(GAME_SETTINGS.startingMana).toBe(200);
+    expect(GAME_SETTINGS.killManaReward).toBe(5);
+  });
+
+  it('increases ghost attack damage by type', () => {
+    expect(GHOSTS.map((ghost) => ghost.damage)).toEqual([2, 2, 3]);
+  });
+
   it('contains five distinct player units with positive cost and health', () => {
     expect(PLANTS).toHaveLength(5);
     expect(new Set(PLANTS.map((plant) => plant.id)).size).toBe(5);
