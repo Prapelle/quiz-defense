@@ -56,7 +56,7 @@ export const PLANTS: PlantConfig[] = [
   { id: 'lotus', name: 'ดอกบัวอาคม', emoji: '🪷', cost: 75, unlockAtStreak: 0, hp: 85, role: 'โจมตีระยะไกล', description: 'ยิงประกายอาคมไปยังผีในเลนเดียวกัน', attackDamage: 24, attackRange: 700, attackMs: 1700 },
   { id: 'bindLotus', name: 'บัวสะกดวิญญาณ', emoji: '🪻', cost: 100, unlockAtStreak: 2, hp: 100, role: 'ลดความเร็ว', description: 'สะกดผีให้เคลื่อนที่ช้าลง', attackDamage: 8, attackRange: 680, attackMs: 2100, slowMs: 2400 },
   { id: 'ward', name: 'เสาหลักอาคม', emoji: '🗿', cost: 125, unlockAtStreak: 3, hp: 420, role: 'ป้องกัน', description: 'รับการโจมตีแทนแนวหลัง', attackDamage: 0, attackRange: 0, attackMs: 0 },
-  { id: 'fireLotus', name: 'ระเบิดอาคม', emoji: '💣', cost: 150, unlockAtStreak: 4, hp: 90, role: 'ระเบิดพื้นที่', description: 'วางลงบนช่องแล้วระเบิดใน 3 วินาที สร้างความเสียหายแก่ผีในช่องรอบข้าง 1 ช่อง', attackDamage: 90, attackRange: 0, attackMs: 0, splashRadius: 1 },
+  { id: 'fireLotus', name: 'ระเบิดอาคม', emoji: '🏺', cost: 150, unlockAtStreak: 4, hp: 90, role: 'ระเบิดพื้นที่', description: 'วางลงบนช่องแล้วระเบิดใน 3 วินาที สร้างความเสียหายแก่ผีในช่องรอบข้าง 1 ช่อง', attackDamage: 90, attackRange: 0, attackMs: 0, splashRadius: 1 },
 ];
 
 export const GHOSTS: GhostConfig[] = [
