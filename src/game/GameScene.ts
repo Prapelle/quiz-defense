@@ -175,8 +175,10 @@ export class GameScene extends Phaser.Scene {
       ? this.add.image(px, py, 'character-atlas', CHARACTER_FRAMES[config.id]).setDisplaySize(config.id === 'ward' ? 60 : 56, 56).setDepth(5)
       : this.add.text(px, py, config.emoji, { fontFamily: 'Apple Color Emoji, Segoe UI Emoji, sans-serif', fontSize: config.id === 'ward' ? '48px' : '42px', stroke: '#112236', strokeThickness: 2 }).setOrigin(0.5).setDepth(5);
     const ring = this.add.graphics().lineStyle(2, 0xf9d983, 0.7).strokeCircle(px, py + 6, 29).setDepth(4);
-    // Ring follows plant life without using remote art assets.
+    const hpBar = this.add.graphics().setDepth(7);
+    // Keep the placement ring and HP bar attached to the protector sprite.
     sprite.setData('ring', ring);
+    sprite.setData('hpBar', hpBar);
     this.plants.push({ config, row, col, x: px, y: py, hp: config.hp, sprite, lastAction: this.time.now });
     this.pushStats();
   }
@@ -197,6 +199,14 @@ export class GameScene extends Phaser.Scene {
   }
 
   private updatePlant(plant: PlantUnit, now: number): void {
+    const hpBar = plant.sprite.getData('hpBar') as Phaser.GameObjects.Graphics | undefined;
+    if (hpBar) {
+      const ratio = Math.max(0, Math.min(1, plant.hp / plant.config.hp));
+      const colour = ratio > 0.55 ? 0x69da9d : ratio > 0.25 ? 0xffcf65 : 0xf27683;
+      hpBar.clear();
+      hpBar.fillStyle(0x17202c, 0.95).fillRoundedRect(plant.x - 20, plant.y - 34, 40, 5, 2);
+      hpBar.fillStyle(colour, 1).fillRoundedRect(plant.x - 20, plant.y - 34, 40 * ratio, 5, 2);
+    }
     if (plant.config.manaEveryMs && now - plant.lastAction >= plant.config.manaEveryMs) {
       plant.lastAction = now;
       this.mana += 15;
@@ -220,7 +230,8 @@ export class GameScene extends Phaser.Scene {
         blocker.sprite.setAlpha(0.62); this.time.delayedCall(100, () => blocker.sprite.active && blocker.sprite.setAlpha(1));
         if (blocker.hp <= 0) {
           const ring = blocker.sprite.getData('ring') as Phaser.GameObjects.Graphics | undefined;
-          ring?.destroy(); blocker.sprite.destroy(); this.plants = this.plants.filter((p) => p !== blocker);
+          const hpBar = blocker.sprite.getData('hpBar') as Phaser.GameObjects.Graphics | undefined;
+          ring?.destroy(); hpBar?.destroy(); blocker.sprite.destroy(); this.plants = this.plants.filter((p) => p !== blocker);
         }
       }
     } else {
@@ -293,7 +304,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   private resetGame(stage: number): void {
-    for (const p of this.plants) { const ring = p.sprite.getData('ring') as Phaser.GameObjects.Graphics | undefined; ring?.destroy(); p.sprite.destroy(); }
+    for (const p of this.plants) { const ring = p.sprite.getData('ring') as Phaser.GameObjects.Graphics | undefined; const hpBar = p.sprite.getData('hpBar') as Phaser.GameObjects.Graphics | undefined; ring?.destroy(); hpBar?.destroy(); p.sprite.destroy(); }
     for (const g of this.ghosts) { g.sprite.destroy(); (g.sprite.getData('hpBar') as Phaser.GameObjects.Graphics | undefined)?.destroy(); }
     for (const p of this.projectiles) p.circle.destroy();
     this.plants = []; this.ghosts = []; this.projectiles = [];
