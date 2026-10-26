@@ -80,7 +80,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   update(_time: number, delta: number): void {
-    if (this.status !== 'playing') return;
+    if (this.status !== 'playing' || this.quizModalOpen) return;
     const realDelta = delta;
     const scaledDelta = realDelta * this.speedMultiplier;
     this.simulationTime += scaledDelta;
@@ -351,8 +351,9 @@ export class GameScene extends Phaser.Scene {
     if (blocker) {
       if (now - ghost.lastAttack > 920) {
         ghost.lastAttack = now;
-        ghost.sprite.setAngle(ghost.sprite.angle + (ghost.x > blocker.x ? -12 : 12));
-        this.tweens.add({ targets: ghost.sprite, angle: { from: -8, to: 8 }, duration: 150, yoyo: true, ease: 'Sine.inOut' });
+        // Keep the idle animation in control of rotation; use a brief alpha flash for hit feedback.
+        ghost.sprite.setAlpha(0.68);
+        this.time.delayedCall(100, () => { if (ghost.sprite.active) ghost.sprite.setAlpha(1); });
         this.damagePlant(blocker, Math.max(1, Math.round(ghost.config.damage * damageMultiplier)));
         if (this.plants.includes(blocker) && ghost.config.poisonDamage) {
           const wasUnpoisoned = blocker.poisonUntil <= now;
