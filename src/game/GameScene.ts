@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { GAME_SETTINGS, GHOSTS, PLANTS, STAGES, type GhostConfig, type PlantConfig, type PlantId, type GhostId } from './config';
+import { CHARACTER_ATLAS_DATA_URL, CHARACTER_FRAME_SIZE, CHARACTER_FRAMES } from '../data/characterAtlas';
 import type { GameSettings } from '../types';
 
 export interface GameStats {
@@ -13,8 +14,8 @@ export interface GameStats {
   stageName: string;
   status: 'playing' | 'won' | 'lost';
 }
-interface PlantUnit { config: PlantConfig; row: number; col: number; x: number; y: number; hp: number; sprite: Phaser.GameObjects.Text; lastAction: number; }
-interface GhostUnit { config: GhostConfig; row: number; x: number; y: number; hp: number; sprite: Phaser.GameObjects.Text; slowUntil: number; lastAttack: number; }
+interface PlantUnit { config: PlantConfig; row: number; col: number; x: number; y: number; hp: number; sprite: Phaser.GameObjects.Image | Phaser.GameObjects.Text; lastAction: number; }
+interface GhostUnit { config: GhostConfig; row: number; x: number; y: number; hp: number; sprite: Phaser.GameObjects.Image | Phaser.GameObjects.Text; slowUntil: number; lastAttack: number; }
 interface Projectile { circle: Phaser.GameObjects.Arc; x: number; y: number; target: GhostUnit; speed: number; damage: number; splash: number; slowMs?: number; }
 
 export class GameScene extends Phaser.Scene {
@@ -35,6 +36,14 @@ export class GameScene extends Phaser.Scene {
   private gameSettings: GameSettings = { rewardCorrect: GAME_SETTINGS.rewardCorrect, startingMana: GAME_SETTINGS.startingMana, baseHealth: GAME_SETTINGS.baseHealth, questionStreakBonus: GAME_SETTINGS.questionStreakBonus, questionStreakEvery: GAME_SETTINGS.questionStreakEvery, enemySpawnMs: GAME_SETTINGS.enemySpawnMs, maxEnemies: GAME_SETTINGS.maxEnemies, questionCooldownMs: GAME_SETTINGS.questionCooldownMs };
 
   constructor() { super('GameScene'); }
+
+  preload(): void {
+    // Inline spritesheet data keeps original character artwork available in offline mode.
+    this.load.spritesheet('character-atlas', CHARACTER_ATLAS_DATA_URL, {
+      frameWidth: CHARACTER_FRAME_SIZE,
+      frameHeight: CHARACTER_FRAME_SIZE,
+    });
+  }
 
   create(): void {
     this.drawWorld();
@@ -132,7 +141,9 @@ export class GameScene extends Phaser.Scene {
     this.mana -= config.cost;
     const px = 208 + col * 104;
     const py = 154 + row * 83;
-    const sprite = this.add.text(px, py, config.emoji, { fontFamily: 'Apple Color Emoji, Segoe UI Emoji, sans-serif', fontSize: config.id === 'ward' ? '48px' : '42px', stroke: '#112236', strokeThickness: 2 }).setOrigin(0.5).setDepth(5);
+    const sprite: Phaser.GameObjects.Image | Phaser.GameObjects.Text = this.textures.exists('character-atlas')
+      ? this.add.image(px, py, 'character-atlas', CHARACTER_FRAMES[config.id]).setDisplaySize(config.id === 'ward' ? 60 : 56, 56).setDepth(5)
+      : this.add.text(px, py, config.emoji, { fontFamily: 'Apple Color Emoji, Segoe UI Emoji, sans-serif', fontSize: config.id === 'ward' ? '48px' : '42px', stroke: '#112236', strokeThickness: 2 }).setOrigin(0.5).setDepth(5);
     const ring = this.add.graphics().lineStyle(2, 0xf9d983, 0.7).strokeCircle(px, py + 6, 29).setDepth(4);
     // Ring follows plant life without using remote art assets.
     sprite.setData('ring', ring);
@@ -145,7 +156,10 @@ export class GameScene extends Phaser.Scene {
     const row = Math.floor(Math.random() * GAME_SETTINGS.gridRows);
     const x = 1150;
     const y = 154 + row * 83;
-    const sprite = this.add.text(x, y, config.emoji, { fontFamily: 'Apple Color Emoji, Segoe UI Emoji, sans-serif', fontSize: `${config.size}px`, stroke: '#1c1831', strokeThickness: 3 }).setOrigin(0.5).setDepth(6);
+    const ghostFrame = CHARACTER_FRAMES[id];
+    const sprite: Phaser.GameObjects.Image | Phaser.GameObjects.Text = this.textures.exists('character-atlas')
+      ? this.add.image(x, y, 'character-atlas', ghostFrame).setDisplaySize(config.id === 'pret' ? 62 : 56, config.id === 'pret' ? 62 : 56).setDepth(6)
+      : this.add.text(x, y, config.emoji, { fontFamily: 'Apple Color Emoji, Segoe UI Emoji, sans-serif', fontSize: `${config.size}px`, stroke: '#1c1831', strokeThickness: 3 }).setOrigin(0.5).setDepth(6);
     sprite.setData('hpBar', this.add.graphics().setDepth(7));
     this.ghosts.push({ config, row, x, y, hp: config.hp, sprite, slowUntil: 0, lastAttack: 0 });
     this.spawned += 1;
