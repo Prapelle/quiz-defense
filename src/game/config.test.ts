@@ -19,6 +19,11 @@ describe('game configuration', () => {
     expect(PLANTS.find((plant) => plant.id === 'fireLotus')?.splashRadius).toBeGreaterThan(0);
   });
 
+  it('defines increasing wave difficulty across stages', () => {
+    expect(STAGES.map((stage) => stage.waves.reduce((sum, count) => sum + count, 0))).toEqual([10, 14, 18]);
+    expect(STAGES[0].waveBreakMs).toBeGreaterThan(STAGES[2].waveBreakMs);
+  });
+
   it('unlocks special plants only after the required correct-answer streak', () => {
     expect(PLANTS.filter((plant) => plant.unlockAtStreak === 0).map((plant) => plant.id)).toEqual(['kumarn', 'lotus']);
     expect(PLANTS.find((plant) => plant.id === 'bindLotus')?.unlockAtStreak).toBe(2);

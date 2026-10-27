@@ -49,3 +49,40 @@ export function targetEnemiesForStage(stage: number, maxEnemies: number): number
   const scale = normalizedStage === 1 ? 0.72 : normalizedStage === 2 ? 1 : 1.28;
   return Math.max(5, Math.round(normalizedMax * scale));
 }
+
+export interface WaveProgress {
+  waveIndex: number;
+  spawnedInWave: number;
+  totalSpawned: number;
+  waitingForNextWave: boolean;
+}
+
+/** Compute wave position from the number of enemies already spawned. */
+export function resolveWaveProgress(waves: number[], totalSpawned: number, waitingForNextWave: boolean): WaveProgress {
+  const safeWaves = waves.map((count) => Math.max(0, Math.floor(Number.isFinite(count) ? count : 0)));
+  const total = safeWaves.reduce((sum, count) => sum + count, 0);
+  const safeTotalSpawned = Math.max(0, Math.min(total, Math.floor(Number.isFinite(totalSpawned) ? totalSpawned : 0)));
+  let remaining = safeTotalSpawned;
+  let waveIndex = Math.max(0, safeWaves.length - 1);
+  let spawnedInWave = 0;
+
+  for (let i = 0; i < safeWaves.length; i += 1) {
+    if (remaining < safeWaves[i]) {
+      waveIndex = i;
+      spawnedInWave = remaining;
+      break;
+    }
+    remaining -= safeWaves[i];
+    if (i === safeWaves.length - 1) {
+      waveIndex = i;
+      spawnedInWave = safeWaves[i];
+    }
+  }
+
+  return {
+    waveIndex,
+    spawnedInWave,
+    totalSpawned: safeTotalSpawned,
+    waitingForNextWave: waitingForNextWave && safeWaves.length > 0 && safeTotalSpawned < total && spawnedInWave >= safeWaves[waveIndex],
+  };
+}
