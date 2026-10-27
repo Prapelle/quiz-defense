@@ -94,8 +94,8 @@ describe('game configuration', () => {
   it('defines bosses for stages 3, 6 and 9 with the requested mechanics', () => {
     expect(BOSSES.map((boss) => boss.stage)).toEqual([3, 6, 9]);
     expect(BOSSES.map((boss) => boss.ability)).toEqual(['charm', 'waterSurge', 'tigerShift']);
-    expect(BOSSES.map((boss) => boss.art)).toEqual(['nangram-boss', 'phrai', 'saming']);
-    expect(BOSSES[0].name).toContain('นางรำ');
+    expect(BOSSES.map((boss) => boss.art)).toEqual(['tai-thang-klom', 'phrai', 'saming']);
+    expect(BOSSES[0].name).toBe('ผีตายทั้งกลม');
     expect(BOSSES[1].name).toContain('ผีพราย');
     expect(BOSSES[2].name).toContain('สมิง');
     expect(BOSSES.every((boss) => boss.hp > 0 && boss.damage > 0 && boss.reward > 0)).toBe(true);
