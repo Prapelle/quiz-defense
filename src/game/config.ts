@@ -52,7 +52,7 @@ export interface BossConfig {
 }
 
 export const BOSSES: BossConfig[] = [
-  { stage: 3, name: 'นางรำเฝ้าประตู', emoji: '💃', hp: 720, speed: 7, damage: 18, reward: 120, description: 'บอสประจำด่าน 3 — ร่ายรำสะกดผู้พิทักษ์ในเลนให้หยุดโจมตี 3 วินาที', ability: 'charm', art: 'nangram-boss' },
+  { stage: 3, name: 'ผีตายทั้งกลม', emoji: '👻', hp: 720, speed: 7, damage: 18, reward: 120, description: 'บอสประจำด่าน 3 — ส่งเสียงคร่ำครวญสะกดผู้พิทักษ์ทั้งเลนให้หยุดโจมตี 3 วินาที', ability: 'charm', art: 'tai-thang-klom' },
   { stage: 6, name: 'ผีพรายเจ้าแม่น้ำ', emoji: '🌊', hp: 1250, speed: 6, damage: 24, reward: 220, description: 'โจมตีน้ำเป็นระลอก สร้างความเสียหายแก่ผู้พิทักษ์ทั่วทั้งแผนที่', ability: 'waterSurge', art: 'phrai' },
   { stage: 9, name: 'ผีสมิง', emoji: '🐅', hp: 2200, speed: 8, damage: 30, reward: 500, description: 'สลับร่างคนกับร่างเสือ และเรียกเสือบริวารเข้าช่วยรบ', ability: 'tigerShift', art: 'saming' },
 ];

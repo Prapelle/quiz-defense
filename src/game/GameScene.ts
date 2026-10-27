@@ -506,7 +506,7 @@ export class GameScene extends Phaser.Scene {
       for (const plant of victims) plant.charmedUntil = Math.max(plant.charmedUntil, now + 3000);
       const ring = this.add.circle(ghost.x, ghost.y, 30, 0xff9be6, 0.16).setStrokeStyle(4, 0xffc4f0, 0.9).setDepth(15);
       this.tweens.add({ targets: ring, scaleX: 14, scaleY: 1.4, alpha: 0, duration: 700, onComplete: () => ring.destroy() });
-      this.game.events.emit('toast', '💃 นางรำร่ายรำสะกด! ผู้พิทักษ์ในเลนหยุดโจมตี 3 วินาที');
+      this.game.events.emit('toast', '👻 ผีตายทั้งกลมคร่ำครวญ! ผู้พิทักษ์ในเลนถูกสะกด หยุดโจมตี 3 วินาที');
     }
     if (ghost.boss?.ability === 'waterSurge' && ghost.bossAbilityElapsed >= 3200) {
       ghost.bossAbilityElapsed = 0;

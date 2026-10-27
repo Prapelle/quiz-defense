@@ -52,7 +52,7 @@ const stageWon = (p: PlayerProgress, stage: number) => (p.bestByStage[String(sta
 
 export const ACHIEVEMENTS: Achievement[] = [
   { id: 'first-win', icon: '🏮', name: 'หมอผีฝึกหัด', description: 'ชนะด่านแรกได้สำเร็จ', earned: (p) => p.wins >= 1 },
-  { id: 'boss-3', icon: '💃', name: 'ผ่านประตูวัดร้าง', description: 'ชนะบอสนางรำเฝ้าประตูในด่าน 3', earned: (p) => stageWon(p, 3) },
+  { id: 'boss-3', icon: '👻', name: 'ผ่านประตูวัดร้าง', description: 'ชนะบอสผีตายทั้งกลมในด่าน 3', earned: (p) => stageWon(p, 3) },
   { id: 'boss-6', icon: '🌊', name: 'สงบคลื่นผีพราย', description: 'ชนะบอสผีพรายเจ้าแม่น้ำในด่าน 6', earned: (p) => stageWon(p, 6) },
   { id: 'boss-9', icon: '🐅', name: 'ปราบผีสมิง', description: 'ชนะบอสสุดท้ายในด่าน 9', earned: (p) => stageWon(p, 9) },
   { id: 'three-stars', icon: '⭐', name: 'ป้องกันไร้รอยขีดข่วน', description: 'ได้ 3 ดาวในด่านใดก็ได้', earned: (p) => Object.values(p.starsByStage).some((stars) => stars >= 3) },

@@ -10,7 +10,7 @@ export const ghostTextureKey = (id: GhostId): string => `ghost-${id}`;
 export const bossTextureKey = (art: string): string => `boss-${art}`;
 
 /** All boss artwork files, including the Saming tiger form used after its first defeat. */
-export const BOSS_ART = ['nangram-boss', 'phrai', 'saming', 'saming-tiger'] as const;
+export const BOSS_ART = ['tai-thang-klom', 'phrai', 'saming', 'saming-tiger'] as const;
 
 export function ghostPortraitStyle(id: GhostId): CSSProperties {
   return {
