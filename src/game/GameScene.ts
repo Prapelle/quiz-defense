@@ -266,6 +266,7 @@ export class GameScene extends Phaser.Scene {
     // Keep the placement ring and HP bar attached to the protector sprite.
     sprite.setData('ring', ring);
     sprite.setData('hpBar', hpBar);
+    this.tweens.add({ targets: sprite, angle: { from: -2, to: 2 }, duration: 720, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
     this.plants.push({ config, row, col, x: px, y: py, hp: config.hp, sprite, lastAction: this.simulationTime, poisonDamage: 0, poisonUntil: 0, poisonIntervalMs: 1000, nextPoisonTick: 0 });
     this.pushStats();
   }
@@ -281,6 +282,7 @@ export class GameScene extends Phaser.Scene {
       ? this.add.image(x, y, 'character-atlas', ghostFrame).setDisplaySize(config.id === 'pret' ? 62 : 56, config.id === 'pret' ? 62 : 56).setDepth(6)
       : this.add.text(x, y, config.emoji, { fontFamily: 'Apple Color Emoji, Segoe UI Emoji, sans-serif', fontSize: `${config.size}px`, stroke: '#1c1831', strokeThickness: 3 }).setOrigin(0.5).setDepth(6);
     sprite.setData('hpBar', this.add.graphics().setDepth(7));
+    this.tweens.add({ targets: sprite, angle: { from: -3, to: 3 }, duration: 520 + Math.round(Math.random() * 260), yoyo: true, repeat: -1, ease: 'Sine.inOut' });
     this.ghosts.push({ config, row, x, y, hp: config.hp, sprite, baseScaleX: sprite.scaleX, baseScaleY: sprite.scaleY, slowUntil: 0, lastAttack: 0 });
     this.spawned += 1;
     this.pushStats();
@@ -292,6 +294,7 @@ export class GameScene extends Phaser.Scene {
     const y = 154 + row * 83;
     const sprite = this.add.text(x, y, boss.emoji, { fontFamily: 'Apple Color Emoji, Segoe UI Emoji, sans-serif', fontSize: '58px', stroke: '#ffdf8a', strokeThickness: 5 }).setOrigin(0.5).setDepth(10);
     sprite.setData('hpBar', this.add.graphics().setDepth(11));
+    this.tweens.add({ targets: sprite, angle: { from: -5, to: 5 }, scaleX: { from: 0.96, to: 1.04 }, duration: 420, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
     sprite.setData('bossName', this.add.text(x, y - 49, boss.name, { fontFamily: 'Tahoma, Arial, sans-serif', fontSize: '15px', color: '#ffe7a3', fontStyle: 'bold', stroke: '#20132c', strokeThickness: 4 }).setOrigin(0.5).setDepth(12));
     const config: GhostConfig = { id: 'pret', name: boss.name, emoji: boss.emoji, hp: boss.hp, speed: boss.speed, damage: boss.damage, reward: boss.reward, description: boss.description, size: 58 };
     this.ghosts.push({ config, row, x, y, hp: boss.hp, sprite, baseScaleX: sprite.scaleX, baseScaleY: sprite.scaleY, slowUntil: 0, lastAttack: 0, boss, bossAbilityElapsed: 0, tigerForm: false });
@@ -348,6 +351,8 @@ export class GameScene extends Phaser.Scene {
     if (blocker) {
       if (now - ghost.lastAttack > 920) {
         ghost.lastAttack = now;
+        ghost.sprite.setAngle(ghost.sprite.angle + (ghost.x > blocker.x ? -12 : 12));
+        this.tweens.add({ targets: ghost.sprite, angle: { from: -8, to: 8 }, duration: 150, yoyo: true, ease: 'Sine.inOut' });
         this.damagePlant(blocker, Math.max(1, Math.round(ghost.config.damage * damageMultiplier)));
         if (this.plants.includes(blocker) && ghost.config.poisonDamage) {
           const wasUnpoisoned = blocker.poisonUntil <= now;
@@ -468,7 +473,7 @@ export class GameScene extends Phaser.Scene {
       this.mana += GAME_SETTINGS.killManaReward;
       this.game.events.emit('toast', `กำจัดผีได้ +${GAME_SETTINGS.killManaReward} พลังอาคม`);
       const hpBar = ghost.sprite.getData('hpBar') as Phaser.GameObjects.Graphics | undefined;
-      hpBar?.destroy(); ghost.sprite.destroy();
+      hpBar?.destroy(); (ghost.sprite.getData('bossName') as Phaser.GameObjects.Text | undefined)?.destroy(); ghost.sprite.destroy();
       this.ghosts = this.ghosts.filter((g) => g !== ghost);
       this.pushStats();
     }
