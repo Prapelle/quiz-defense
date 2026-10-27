@@ -57,13 +57,14 @@ npm run preview
 
 ผล build อยู่ใน `dist/`
 
-## เผยแพร่บน Vercel
+## เผยแพร่บน GitHub Pages
 
-1. สร้าง repository แยกชื่อ `quiz-defense` บน GitHub แล้วอัปโหลดโฟลเดอร์นี้ (อย่ารวมกับ CRC Dashboard)
-2. ใน Vercel เลือก **Add New → Project** แล้ว Import repository `quiz-defense`
-3. Framework preset: Vite; Build Command: `npm run build`; Output Directory: `dist`
-4. เมื่อ deploy แล้วเปิดเว็บออนไลน์หนึ่งครั้ง รอ Service Worker install/activate และตรวจสถานะ “ออฟไลน์พร้อมใช้” ก่อนทดสอบตัดอินเทอร์เน็ต
-5. สำหรับ iPad เปิด URL ด้วย Safari → Share → Add to Home Screen; เปิดแอปที่เพิ่มไว้ตอนออนไลน์ครั้งแรก แล้วกลับมาทดลองใน Airplane Mode
+เว็บอยู่ที่ https://prapelle.github.io/quiz-defense/ และ deploy อัตโนมัติทุกครั้งที่ push เข้า `main` ผ่าน `.github/workflows/deploy-pages.yml` (รัน test, type check แล้ว build)
+
+1. ตั้งค่าครั้งแรก: GitHub → Settings → Pages → Source เลือก **GitHub Actions**
+2. ดูสถานะ deploy ได้ที่แท็บ **Actions** หรือสั่ง deploy ใหม่ด้วย **Run workflow**
+3. เปิดเว็บออนไลน์หนึ่งครั้ง รอ Service Worker install/activate และตรวจสถานะ “ออฟไลน์พร้อมใช้” ก่อนทดสอบตัดอินเทอร์เน็ต
+4. สำหรับ iPad เปิด URL ด้วย Safari → Share → Add to Home Screen; เปิดแอปที่เพิ่มไว้ตอนออนไลน์ครั้งแรก แล้วกลับมาทดลองใน Airplane Mode
 
 ## การทำงานออฟไลน์และข้อจำกัด
 
@@ -133,9 +134,6 @@ public/
 
 - TypeScript data/storage modules: ตรวจผ่านด้วย TypeScript compiler
 - TS/TSX syntax scan: ตรวจผ่าน
-- Strict source type check: ตรวจผ่านด้วย temporary declarations สำหรับไลบรารีภายนอกที่ยังติดตั้งไม่ได้ จึงไม่ใช่ผลทดสอบจาก React/Phaser types ของจริง
 - Core checks: ผ่านการตรวจ JSON sample, parse CSV ที่มี comma/escaped quotes, CSV round-trip, import แบบเพิ่ม/แทนที่ และการปฏิเสธข้อมูลผิดรูปแบบ
 - ZIP source archive: ตรวจความสมบูรณ์ของ archive ผ่าน
-- `npm install`, `npm test`, `npm run build` จริง: ยังรันไม่ได้ใน environment สร้างไฟล์นี้ เพราะ DNS/network resolve `registry.npmjs.org` ไม่สำเร็จ (`EAI_AGAIN`); ต้องรันในเครื่องหรือ build environment ที่เข้าถึง npm registry ได้
-- GitHub/Vercel: source ยังไม่ได้ push หรือ deploy; ต้องสร้าง repository แยก `quiz-defense` ก่อน แล้วเชื่อมกับ Vercel
 - ทดสอบ iPad จริง/การเปิดหลังตัดอินเทอร์เน็ต: ยังไม่ยืนยัน และต้องตรวจบน iPad/iPadOS จริงก่อนใช้งานจริง
