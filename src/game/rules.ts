@@ -1,4 +1,4 @@
-import { PLANTS, type PlantId } from './config';
+import { GHOST_ABILITY, PLANTS, type GhostAbility, type PlantId } from './config';
 
 export interface PlantUnlockResolution {
   unlockedPlants: PlantId[];
@@ -86,4 +86,27 @@ export function resolveWaveProgress(waves: number[], totalSpawned: number, waiti
     totalSpawned: safeTotalSpawned,
     waitingForNextWave: waitingForNextWave && safeWaves.length > 0 && safeTotalSpawned < total && spawnedInWave >= safeWaves[waveIndex],
   };
+}
+
+/** Camouflaged Tanian and vanished Phrong cannot be targeted or damaged. */
+export function isGhostUntargetable(ability: GhostAbility | undefined, abilityUntil: number, now: number): boolean {
+  return (ability === 'camouflage' || ability === 'vanish') && abilityUntil > now;
+}
+
+/** Damage after Khomot's smoke form reduction (always at least 1). */
+export function smokeDamage(damage: number, smoking: boolean): number {
+  const reduction = smoking ? GHOST_ABILITY.smokeDamageReduction : 0;
+  return Math.max(1, Math.round(damage * (1 - reduction)));
+}
+
+/** A ghost that reaches the base costs one life (two for a boss), matching "times a ghost may pass the base". */
+export function baseDamageForLeak(isBoss: boolean): number {
+  return isBoss ? 2 : 1;
+}
+
+/** Stars from the share of base health left: ≥80% → 3, ≥40% → 2, otherwise 1 (0 when lost). */
+export function starsForResult(won: boolean, health: number, baseHealth: number): number {
+  if (!won) return 0;
+  const ratio = baseHealth > 0 ? health / baseHealth : 0;
+  return ratio >= 0.8 ? 3 : ratio >= 0.4 ? 2 : 1;
 }

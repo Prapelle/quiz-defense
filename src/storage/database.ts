@@ -89,6 +89,11 @@ export function migrateGameSettings(input: Partial<GameSettings> | undefined, se
   return merged;
 }
 
+/** Fills missing fields from defaults; used on load and when restoring a backup file. */
+export function normalizeSave(input: Partial<GameSave>): GameSave {
+  return mergeSave(input);
+}
+
 function mergeSave(input: Partial<GameSave>): GameSave {
   const fresh = initialSave();
   return {

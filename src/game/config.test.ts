@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { BOSSES, GAME_SETTINGS, GHOSTS, PLANTS, STAGES } from './config';
+import { BOSSES, GAME_SETTINGS, GHOST_ABILITY, GHOSTS, PLANTS, STAGES } from './config';
 
 describe('game configuration', () => {
   it('starts with 200 mana and grants 5 mana for each ghost defeated', () => {
@@ -50,9 +50,10 @@ describe('game configuration', () => {
     expect(lotus.attackDamage).toBeGreaterThan(24);
     expect(bindLotus.slowMs).toBeGreaterThan(bindLotus.attackMs);
     expect(dps(bindLotus)).toBeLessThan(dps(lotus));
-    expect(fireLotus.splashRadius).toBeGreaterThan(0);
-    expect(dps(fireLotus)).toBeGreaterThan(dps(lotus) * 0.9);
-    expect(dps(fireLotus)).toBeLessThan(dps(lotus) * 1.2);
+    // The bomb guardian is a one-shot area blast rather than a repeating attacker.
+    expect(fireLotus.fuseMs).toBe(3000);
+    expect(fireLotus.splashRadius).toBe(1);
+    expect(fireLotus.attackDamage).toBeGreaterThan(lotus.attackDamage * 3);
   });
 
   it('defines increasing wave difficulty across stages', () => {
@@ -75,16 +76,25 @@ describe('game configuration', () => {
     expect(preta.hp).toBeGreaterThan(Math.max(...GHOSTS.filter((ghost) => ghost.id !== 'pret').map((ghost) => ghost.hp)));
     expect(preta.speed).toBeLessThan(Math.min(...GHOSTS.filter((ghost) => ghost.id !== 'pret').map((ghost) => ghost.speed)));
     expect(GHOSTS.filter((ghost) => ghost.flying).map((ghost) => ghost.id)).toEqual(['krasue', 'krahang']);
-    expect(GHOSTS.find((ghost) => ghost.id === 'pop')?.enrageBelowHpRatio).toBe(0.5);
-    expect(GHOSTS.find((ghost) => ghost.id === 'phong')?.poisonDamage).toBeGreaterThan(0);
-    expect(GHOSTS.find((ghost) => ghost.id === 'maemai')?.speedAuraRadius).toBeGreaterThan(0);
-    expect(GHOSTS.find((ghost) => ghost.id === 'taihong')?.deathBurstDamage).toBeGreaterThan(0);
-    expect(GHOSTS.find((ghost) => ghost.id === 'khomot')?.damageReduction).toBe(0.25);
+    expect(GHOSTS.filter((ghost) => ghost.flyOverAll).map((ghost) => ghost.id)).toEqual(['krahang']);
+  });
+
+  it('gives each ghost the ability from the development plan', () => {
+    const abilities = Object.fromEntries(GHOSTS.map((ghost) => [ghost.id, ghost.ability ?? null]));
+    expect(abilities).toEqual({
+      tanian: 'camouflage', krasue: null, pret: 'lunge', krahang: null, pop: 'lifesteal',
+      kongkoi: 'laneHop', phrong: 'vanish', nangram: 'charm', huakhad: 'fear', khomot: 'smoke',
+    });
+    expect(GHOSTS.map((ghost) => ghost.name)).toEqual(['ผีตานี', 'ผีกระสือ', 'ผีเปรต', 'ผีกระหัง', 'ผีปอบ', 'ผีกองกอย', 'ผีโพรง', 'ผีนางรำ', 'ผีหัวขาด', 'ผีโขมด']);
+    expect(GHOSTS.every((ghost) => ghost.abilityLabel)).toBe(true);
+    expect(GHOST_ABILITY.smokeDamageReduction).toBe(0.6);
+    expect(GHOST_ABILITY.camouflageMs).toBeLessThan(GHOST_ABILITY.camouflageEveryMs);
   });
 
   it('defines bosses for stages 3, 6 and 9 with the requested mechanics', () => {
     expect(BOSSES.map((boss) => boss.stage)).toEqual([3, 6, 9]);
-    expect(BOSSES.map((boss) => boss.ability)).toEqual(['waterSurge', 'waterSurge', 'tigerShift']);
+    expect(BOSSES.map((boss) => boss.ability)).toEqual(['charm', 'waterSurge', 'tigerShift']);
+    expect(BOSSES.map((boss) => boss.art)).toEqual(['nangram-boss', 'phrai', 'saming']);
     expect(BOSSES[0].name).toContain('นางรำ');
     expect(BOSSES[1].name).toContain('ผีพราย');
     expect(BOSSES[2].name).toContain('สมิง');

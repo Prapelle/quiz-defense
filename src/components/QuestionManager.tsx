@@ -13,7 +13,7 @@ export function QuestionManager({ save, onChange }: Props) {
   const [subjectFilter, setSubjectFilter] = useState('ทั้งหมด');
   const [difficultyFilter, setDifficultyFilter] = useState('ทั้งหมด');
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [form, setForm] = useState<Omit<QuizQuestion, 'id'>>(emptyForm());
+  const [form, setForm] = useState<Omit<QuizQuestion, 'id'>>(() => ({ ...emptyForm(), setId: save.activeSetId || save.sets[0]?.id || '' }));
   const [notice, setNotice] = useState('');
   const [setName, setSetName] = useState('ชุดคำถามใหม่');
   const [setNameDrafts, setSetNameDrafts] = useState<Record<string, string>>({});
@@ -31,7 +31,7 @@ export function QuestionManager({ save, onChange }: Props) {
     const question: QuizQuestion = { ...form, id, question: form.question.trim(), choices: form.choices.map((c) => c.trim()) as QuizQuestion['choices'] };
     const questions = editingId ? save.questions.map((q) => q.id === id ? question : q) : [...save.questions, question];
     const sets = save.sets.map((s) => s.id === form.setId ? { ...s, updatedAt: new Date().toISOString(), questionIds: [...new Set([...s.questionIds, id])] } : s);
-    onChange({ ...save, questions, sets }); setNotice(editingId ? 'บันทึกการแก้ไขแล้ว' : 'เพิ่มคำถามแล้ว'); blankForSet(form.setId);
+    onChange({ ...save, questions, sets }); blankForSet(form.setId); setNotice(editingId ? 'บันทึกการแก้ไขแล้ว' : 'เพิ่มคำถามแล้ว');
   }
   function deleteQuestion(q: QuizQuestion) {
     if (!window.confirm(`ลบคำถาม “${q.question}” หรือไม่?`)) return;
