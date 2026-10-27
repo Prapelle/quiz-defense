@@ -80,6 +80,9 @@ export class GameScene extends Phaser.Scene {
     });
     this.events.on('scene-ready', () => this.pushStats());
     this.resetGame(1);
+    // Artwork loads before create(), so the game's 'ready' event fires too early to receive
+    // the chosen stage. Tell the React side only once the scene can actually take commands.
+    this.game.events.emit('scene-created');
   }
 
   update(_time: number, delta: number): void {

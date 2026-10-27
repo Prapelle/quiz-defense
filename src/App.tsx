@@ -145,7 +145,11 @@ export default function App() {
     };
   }, [game, commit, selectedStage]);
 
+  // Only battle-balance settings restart a battle; sound settings change mid-game without a reset.
+  const s = save?.settings;
+  const battleSettingsKey = s ? [s.rewardCorrect, s.startingMana, s.baseHealth, s.questionStreakBonus, s.questionStreakEvery, s.enemySpawnMs, s.maxEnemies, s.questionCooldownMs].join('|') : '';
   useEffect(() => {
+    const save = saveRef.current;
     if (!game || page !== 'battle' || !save) return;
     const scene = game.scene.getScene('GameScene');
     scene.events.emit('set-game-settings', save.settings);
@@ -153,7 +157,7 @@ export default function App() {
     scene.events.emit('set-speed', 1);
     setSelectedPlant('lotus'); setGameSpeed(1);
     usedQuestions.current.clear(); setBattleResult(null); setCurrentQuestion(null); setQuestionAnswer(null); setQuestionModal(false);
-  }, [game, selectedStage, page, save?.settings]);
+  }, [game, selectedStage, page, battleSettingsKey]);
 
   function startStage(stage: number) {
     setSelectedStage(stage); setPage('battle'); setGame(null); setQuestionModal(false); setBattleResult(null); usedQuestions.current.clear();

@@ -11,7 +11,7 @@ export function GameCanvas({ stage, onReady }: Props) {
     if (!host.current) return;
     const game = createGame(host.current);
     gameRef.current = game;
-    game.events.once('ready', () => {
+    game.events.once('scene-created', () => {
       onReady(game);
       const scene = game.scene.getScene('GameScene');
       scene.events.emit('reset-game', stage);
