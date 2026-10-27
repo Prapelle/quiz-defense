@@ -1,5 +1,7 @@
 import { DEFAULT_QUESTIONS, DEFAULT_SETS, DEFAULT_SET_ID } from '../data/defaultQuestions';
+import { GRADE2_QUESTIONS, GRADE2_SET, GRADE2_SET_ID } from '../data/grade2Questions';
 import { GAME_SETTINGS } from '../game/config';
+import { freshProgress } from '../game/progress';
 import type { GameSave, PlayerProgress, QuizQuestion, QuestionSet, GameSettings } from '../types';
 
 const DB_NAME = 'quiz-defense-local';
@@ -8,12 +10,15 @@ const STORE = 'app-state';
 const KEY = 'save-v1';
 const LEGACY_DEFAULT_STARTING_MANA = 150;
 const CURRENT_SETTINGS_VERSION = 2;
+/** 1 = Grade 2 question bank added. */
+const CURRENT_CONTENT_VERSION = 1;
 
 const initialSave = (): GameSave => ({
   settingsVersion: CURRENT_SETTINGS_VERSION,
-  questions: DEFAULT_QUESTIONS,
-  sets: DEFAULT_SETS,
-  progress: { score: 0, unlockedStage: 1, starsByStage: {}, gamesPlayed: 0, correctAnswers: 0, answeredQuestions: 0 },
+  contentVersion: CURRENT_CONTENT_VERSION,
+  questions: [...GRADE2_QUESTIONS, ...DEFAULT_QUESTIONS],
+  sets: [GRADE2_SET, ...DEFAULT_SETS],
+  progress: freshProgress(),
   settings: {
     rewardCorrect: GAME_SETTINGS.rewardCorrect,
     startingMana: GAME_SETTINGS.startingMana,
@@ -23,8 +28,11 @@ const initialSave = (): GameSave => ({
     enemySpawnMs: GAME_SETTINGS.enemySpawnMs,
     maxEnemies: GAME_SETTINGS.maxEnemies,
     questionCooldownMs: GAME_SETTINGS.questionCooldownMs,
+    soundMuted: false,
+    musicVolume: 0.45,
+    sfxVolume: 0.8,
   },
-  activeSetId: DEFAULT_SET_ID,
+  activeSetId: GRADE2_SET_ID,
   updatedAt: new Date().toISOString(),
 });
 
@@ -96,15 +104,30 @@ export function normalizeSave(input: Partial<GameSave>): GameSave {
 
 function mergeSave(input: Partial<GameSave>): GameSave {
   const fresh = initialSave();
-  return {
+  const merged: GameSave = {
     ...fresh,
     ...input,
     settingsVersion: CURRENT_SETTINGS_VERSION,
+    contentVersion: CURRENT_CONTENT_VERSION,
     questions: Array.isArray(input.questions) ? input.questions : fresh.questions,
     sets: Array.isArray(input.sets) ? input.sets : fresh.sets,
     progress: { ...fresh.progress, ...(input.progress ?? {}) },
     settings: migrateGameSettings(input.settings, input.settingsVersion),
     activeSetId: typeof input.activeSetId === 'string' ? input.activeSetId : fresh.activeSetId,
+  };
+  return migrateContent(merged, input.contentVersion);
+}
+
+/** Adds built-in question banks to older saves once, without touching the player's own sets. */
+export function migrateContent(save: GameSave, contentVersion?: number): GameSave {
+  if ((contentVersion ?? 0) >= 1 || save.sets.some((set) => set.id === GRADE2_SET_ID)) return save;
+  const existingIds = new Set(save.questions.map((question) => question.id));
+  return {
+    ...save,
+    sets: [GRADE2_SET, ...save.sets],
+    questions: [...GRADE2_QUESTIONS.filter((question) => !existingIds.has(question.id)), ...save.questions],
+    // Switch only players still on the old starter set; keep anyone who picked their own set.
+    activeSetId: save.activeSetId === DEFAULT_SET_ID ? GRADE2_SET_ID : save.activeSetId,
   };
 }
 
@@ -170,7 +193,8 @@ export function importQuestionPackage(current: GameSave, pkg: QuestionPackage, m
 }
 
 export function resetProgress(progress: PlayerProgress): PlayerProgress {
-  return { ...progress, score: 0, unlockedStage: 1, starsByStage: {}, gamesPlayed: 0, correctAnswers: 0, answeredQuestions: 0 };
+  void progress;
+  return freshProgress();
 }
 
 export type { GameSettings };

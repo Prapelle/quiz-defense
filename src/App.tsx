@@ -8,11 +8,13 @@ import type { GameSave, PlayerProgress, QuizQuestion } from './types';
 import type { GameStats } from './game/GameScene';
 import { CHARACTER_ATLAS_ROOT_STYLE, CHARACTER_FRAMES, spriteBackgroundStyle } from './data/characterAtlas';
 import { ghostPortraitStyle } from './data/ghostArt';
-import { pickUnseenQuestion } from './game/questionSelection';
+import { pickQuestionForStage } from './game/questionSelection';
 import { starsForResult } from './game/rules';
+import { ACHIEVEMENTS, applyAnswerProgress, applyBattleProgress, awardAchievements, freshProgress, weakestSubject } from './game/progress';
+import { sound, type SfxName } from './audio/sound';
 import './styles.css';
 
-type Page = 'home' | 'stages' | 'battle' | 'questions' | 'settings' | 'backup';
+type Page = 'home' | 'stages' | 'battle' | 'questions' | 'settings' | 'backup' | 'achievements';
 type BattleResult = { won: boolean; stats: GameStats };
 
 function downloadFile(name: string, content: string, type: string) {
@@ -39,6 +41,7 @@ export default function App() {
   const [toast, setToast] = useState('');
   const [offlineStatus, setOfflineStatus] = useState<'checking' | 'ready' | 'not-ready'>('checking');
   const [backupNotice, setBackupNotice] = useState('');
+  const [newAchievements, setNewAchievements] = useState<string[]>([]);
   // Part of the GameCanvas key so replaying the same stage remounts a fresh Phaser game.
   const [battleRunId, setBattleRunId] = useState(0);
   const usedQuestions = useRef(new Set<string>());
@@ -81,6 +84,20 @@ export default function App() {
     if (next !== 'battle') { setQuestionModal(false); setBattleResult(null); }
   };
 
+  // iOS only allows audio after a user gesture, so every tap tries to unlock it; buttons click.
+  useEffect(() => {
+    const onPointer = (event: PointerEvent) => {
+      sound.unlock();
+      if ((event.target as HTMLElement | null)?.closest('button, .file-button')) sound.play('click');
+    };
+    document.addEventListener('pointerdown', onPointer);
+    return () => document.removeEventListener('pointerdown', onPointer);
+  }, []);
+  useEffect(() => {
+    if (save) sound.configure({ muted: save.settings.soundMuted, musicVolume: save.settings.musicVolume, sfxVolume: save.settings.sfxVolume });
+  }, [save?.settings.soundMuted, save?.settings.musicVolume, save?.settings.sfxVolume]);
+  useEffect(() => { sound.music(page === 'battle' ? 'music-battle' : 'music-map'); }, [page]);
+
   const activeSet = useMemo(() => save?.sets.find((s) => s.id === save.activeSetId) ?? save?.sets[0], [save]);
   function showToast(message: string) {
     setToast(message);
@@ -98,10 +115,11 @@ export default function App() {
       const set = current.sets.find((s) => s.id === current.activeSetId) ?? current.sets[0];
       const qs = current.questions.filter((q) => q.setId === set?.id);
       const pool = qs.length ? qs : current.questions;
-      const question = pickUnseenQuestion(pool, usedQuestions.current);
+      const question = pickQuestionForStage(pool, usedQuestions.current, selectedStage);
       if (!question) { game.scene.getScene('GameScene').events.emit('quiz-unavailable'); showToast('ยังไม่มีคำถามในชุดนี้ ไปที่จัดการคำถามเพื่อเพิ่มคำถามก่อน'); return; }
       const scene = game.scene.getScene('GameScene');
       scene.scene.pause();
+      sound.play('quiz');
       setCurrentQuestion(question); setQuestionAnswer(null); setQuestionModal(true);
     };
     const onEnd = (result: BattleResult) => {
@@ -109,21 +127,21 @@ export default function App() {
       const current = saveRef.current;
       if (!current) return;
       const stars = starsForResult(result.won, result.stats.health, current.settings.baseHealth);
-      const progress: PlayerProgress = {
-        ...current.progress,
-        score: current.progress.score + result.stats.score,
-        unlockedStage: result.won ? Math.max(current.progress.unlockedStage, Math.min(STAGES.length, selectedStage + 1)) : current.progress.unlockedStage,
-        starsByStage: result.won ? { ...current.progress.starsByStage, [selectedStage]: Math.max(current.progress.starsByStage[String(selectedStage)] ?? 0, stars) } : current.progress.starsByStage,
-        gamesPlayed: current.progress.gamesPlayed + 1,
-      };
+      const afterBattle: PlayerProgress = applyBattleProgress(current.progress, { stage: selectedStage, won: result.won, score: result.stats.score, kills: result.stats.kills, health: result.stats.health, stars, totalStages: STAGES.length });
+      const { progress, unlocked } = awardAchievements(afterBattle);
+      setNewAchievements(unlocked.map((a) => `${a.icon} ${a.name}`));
+      sound.play(result.won ? 'win' : 'lose');
+      if (unlocked.length) window.setTimeout(() => sound.play('unlock'), 700);
       void commit({ ...current, progress });
     };
     game.events.on('stats-changed', onStats);
+    const onSfx = (name: SfxName) => sound.play(name);
+    game.events.on('sfx', onSfx);
     game.events.on('toast', onToast);
     game.events.on('quiz-requested', onQuiz);
     game.events.on('game-ended', onEnd);
     return () => {
-      game.events.off('stats-changed', onStats); game.events.off('toast', onToast); game.events.off('quiz-requested', onQuiz); game.events.off('game-ended', onEnd);
+      game.events.off('stats-changed', onStats); game.events.off('toast', onToast); game.events.off('sfx', onSfx); game.events.off('quiz-requested', onQuiz); game.events.off('game-ended', onEnd);
     };
   }, [game, commit, selectedStage]);
 
@@ -139,7 +157,7 @@ export default function App() {
 
   function startStage(stage: number) {
     setSelectedStage(stage); setPage('battle'); setGame(null); setQuestionModal(false); setBattleResult(null); usedQuestions.current.clear();
-    setBattleRunId((id) => id + 1);
+    setBattleRunId((id) => id + 1); setNewAchievements([]);
   }
 
   function changeGameSpeed(speed: 1 | 2 | 3) {
@@ -151,7 +169,10 @@ export default function App() {
     if (!save || !currentQuestion || questionAnswer !== null) return;
     setQuestionAnswer(index);
     const correct = index === currentQuestion.answerIndex;
-    const nextProgress = { ...save.progress, answeredQuestions: save.progress.answeredQuestions + 1, correctAnswers: save.progress.correctAnswers + (correct ? 1 : 0) };
+    const { progress: nextProgress, unlocked } = awardAchievements(applyAnswerProgress(save.progress, currentQuestion.subject, correct, correct ? stats.streak + 1 : 0));
+    sound.play(correct ? 'correct' : 'wrong');
+    if (unlocked.length) window.setTimeout(() => sound.play('unlock'), 450);
+    if (unlocked.length) showToast(`ปลดล็อกความสำเร็จ: ${unlocked.map((a) => `${a.icon} ${a.name}`).join(', ')}`);
     void commit({ ...save, progress: nextProgress });
     if (game) {
       const scene = game.scene.getScene('GameScene');
@@ -199,9 +220,10 @@ export default function App() {
         <button className={page === 'home' ? 'active' : ''} onClick={() => goPage('home')}>หน้าแรก</button>
         <button className={page === 'stages' ? 'active' : ''} onClick={() => goPage('stages')}>เลือกด่าน</button>
         <button className={page === 'questions' ? 'active' : ''} onClick={() => goPage('questions')}>คลังคำถาม</button>
+        <button className={page === 'achievements' ? 'active' : ''} onClick={() => goPage('achievements')}>ความสำเร็จ</button>
         <button className={page === 'backup' ? 'active' : ''} onClick={() => goPage('backup')}>ข้อมูลสำรอง</button>
       </nav>
-      <div className="top-status"><span className={`status-dot ${offlineStatus === 'ready' ? 'online' : 'warning'}`} />{offlineStatus === 'ready' ? 'ออฟไลน์พร้อมใช้' : offlineStatus === 'not-ready' ? 'ยังไม่พร้อมออฟไลน์' : 'กำลังตรวจสอบ'}<span className="save-indicator">{saving ? 'กำลังบันทึก…' : '● บันทึกในเครื่อง'}</span></div>
+      <div className="top-status"><span className={`status-dot ${offlineStatus === 'ready' ? 'online' : 'warning'}`} />{offlineStatus === 'ready' ? 'ออฟไลน์พร้อมใช้' : offlineStatus === 'not-ready' ? 'ยังไม่พร้อมออฟไลน์' : 'กำลังตรวจสอบ'}<span className="save-indicator">{saving ? 'กำลังบันทึก…' : '● บันทึกในเครื่อง'}</span><button className="sound-toggle" aria-pressed={!save.settings.soundMuted} aria-label={save.settings.soundMuted ? 'เปิดเสียง' : 'ปิดเสียง'} onClick={() => updateSetting('soundMuted', !save.settings.soundMuted)}>{save.settings.soundMuted ? '🔇' : '🔊'}</button></div>
     </header>
 
     {loadingError && <div className="global-warning">⚠ {loadingError}</div>}
@@ -235,12 +257,41 @@ export default function App() {
         </aside>
       </div>
       {questionModal && currentQuestion && <div className="modal-backdrop"><section className="quiz-modal" role="dialog" aria-modal="true" aria-label="ตอบคำถาม"><div className="quiz-modal-top"><span className="quiz-sigil">✦</span><div><p className="eyebrow">คำท้าทายจากตำราอาคม</p><h2>ตอบให้ถูกเพื่อรับพลัง!</h2></div><button className="close-modal" disabled={questionAnswer === null} onClick={() => { setQuestionModal(false); game?.scene.getScene('GameScene').scene.resume(); }}>×</button></div><div className="quiz-meta"><span>{currentQuestion.subject}</span><span>{currentQuestion.grade}</span><span>{currentQuestion.difficulty}</span></div><p className="quiz-question-text">{currentQuestion.question}</p><div className="quiz-options">{currentQuestion.choices.map((choice, i) => { const answered = questionAnswer !== null; const isCorrect = i === currentQuestion.answerIndex; return <button key={i} disabled={answered} className={`quiz-option ${answered && isCorrect ? 'correct' : ''} ${answered && questionAnswer === i && !isCorrect ? 'wrong' : ''}`} onClick={() => answerQuestion(i)}><span>{String.fromCharCode(65 + i)}</span>{choice}{answered && isCorrect && <b>✓</b>}</button>; })}</div>{questionAnswer !== null && <div className={`explanation-box ${questionAnswer === currentQuestion.answerIndex ? 'good' : 'try-again'}`}><strong>{questionAnswer === currentQuestion.answerIndex ? '✨ เยี่ยมมาก ตอบถูก!' : '🌱 ไม่เป็นไร ลองเรียนรู้จากเฉลยนะ'}</strong><p>{currentQuestion.explanation || `คำตอบที่ถูกคือ ${currentQuestion.choices[currentQuestion.answerIndex]}`}</p><button className="button primary" onClick={() => { setQuestionModal(false); game?.scene.getScene('GameScene').scene.resume(); }}>กลับไปป้องกันหมู่บ้าน</button></div>}</section></div>}
-      {battleResult && <div className="modal-backdrop"><section className="result-modal" role="dialog" aria-modal="true"><div className={`result-emblem ${battleResult.won ? 'victory' : 'defeat'}`}>{battleResult.won ? '🏆' : '🧿'}</div><p className="eyebrow">{battleResult.won ? 'VILLAGE PROTECTED' : 'KEEP PRACTICING'}</p><h2>{battleResult.won ? 'ปกป้องหมู่บ้านสำเร็จ!' : 'พลังอาคมหมดลง…'}</h2><p>{battleResult.won ? 'เหล่าผีถอยกลับไปแล้ว หมู่บ้านปลอดภัยอีกครั้ง' : 'ลองวางผู้พิทักษ์และตอบคำถามให้มากขึ้น แล้วกลับมาสู้อีกครั้ง'}</p>{battleResult.won && <div className="result-stars">{'★'.repeat(starsForResult(true, battleResult.stats.health, save.settings.baseHealth))}{'☆'.repeat(3 - starsForResult(true, battleResult.stats.health, save.settings.baseHealth))}</div>}<div className="result-numbers"><div><strong>{battleResult.stats.score}</strong><span>คะแนน</span></div><div><strong>{battleResult.stats.kills}</strong><span>กำจัดผี</span></div><div><strong>{battleResult.stats.health}/{save.settings.baseHealth}</strong><span>พลังฐานเหลือ</span></div></div><div className="result-actions"><button className="button primary" onClick={() => { setBattleResult(null); startStage(selectedStage); }}>↻ เล่นอีกครั้ง</button>{battleResult.won && selectedStage < STAGES.length && selectedStage < save.progress.unlockedStage + 1 && <button className="button secondary" onClick={() => startStage(selectedStage + 1)}>ด่านถัดไป →</button>}<button className="button ghost" onClick={() => goPage('stages')}>กลับหน้าเลือกด่าน</button></div></section></div>}
+      {battleResult && <div className="modal-backdrop"><section className="result-modal" role="dialog" aria-modal="true"><div className={`result-emblem ${battleResult.won ? 'victory' : 'defeat'}`}>{battleResult.won ? '🏆' : '🧿'}</div><p className="eyebrow">{battleResult.won ? 'VILLAGE PROTECTED' : 'KEEP PRACTICING'}</p><h2>{battleResult.won ? 'ปกป้องหมู่บ้านสำเร็จ!' : 'พลังอาคมหมดลง…'}</h2><p>{battleResult.won ? 'เหล่าผีถอยกลับไปแล้ว หมู่บ้านปลอดภัยอีกครั้ง' : 'ลองวางผู้พิทักษ์และตอบคำถามให้มากขึ้น แล้วกลับมาสู้อีกครั้ง'}</p>{battleResult.won && <div className="result-stars">{'★'.repeat(starsForResult(true, battleResult.stats.health, save.settings.baseHealth))}{'☆'.repeat(3 - starsForResult(true, battleResult.stats.health, save.settings.baseHealth))}</div>}{newAchievements.length > 0 && <div className="result-achievements" role="status"><strong>ปลดล็อกความสำเร็จใหม่!</strong>{newAchievements.map((a) => <span key={a}>{a}</span>)}</div>}<div className="result-numbers"><div><strong>{battleResult.stats.score}</strong><span>คะแนน</span></div><div><strong>{battleResult.stats.kills}</strong><span>กำจัดผี</span></div><div><strong>{battleResult.stats.health}/{save.settings.baseHealth}</strong><span>พลังฐานเหลือ</span></div></div><div className="result-actions"><button className="button primary" onClick={() => { setBattleResult(null); startStage(selectedStage); }}>↻ เล่นอีกครั้ง</button>{battleResult.won && selectedStage < STAGES.length && selectedStage < save.progress.unlockedStage + 1 && <button className="button secondary" onClick={() => startStage(selectedStage + 1)}>ด่านถัดไป →</button>}<button className="button ghost" onClick={() => goPage('stages')}>กลับหน้าเลือกด่าน</button></div></section></div>}
     </main>}
 
     {page === 'questions' && <QuestionManager save={save} onChange={commit} />}
 
-    {page === 'settings' && <main className="settings-page"><div className="page-heading"><div><p className="eyebrow">GAME BALANCE</p><h1>ตั้งค่าเกม</h1><p>ปรับสมดุลได้จากข้อมูลที่บันทึกไว้ในเครื่อง</p></div></div><div className="settings-grid"><section className="panel settings-card"><h2>⚖️ สมดุลการเล่น</h2><p className="muted">การเปลี่ยนค่าจะมีผลเมื่อเริ่มด่านใหม่</p><label className="setting-row"><span><strong>พลังอาคมเมื่อตอบถูก</strong><small>พลังที่ได้รับต่อหนึ่งคำตอบถูก</small></span><input type="number" min={5} max={100} step={5} value={save.settings.rewardCorrect} onChange={(e) => updateSetting('rewardCorrect', Math.max(5, Math.min(100, Number(e.target.value) || 5)))} /></label><label className="setting-row"><span><strong>พลังอาคมเริ่มต้น</strong><small>พลังที่มีเมื่อเริ่มด่าน</small></span><input type="number" min={0} max={500} step={25} value={save.settings.startingMana} onChange={(e) => updateSetting('startingMana', Math.max(0, Math.min(500, Number(e.target.value) || 0)))} /></label><label className="setting-row"><span><strong>พลังชีวิตฐาน</strong><small>จำนวนครั้งที่ผีผ่านฐานได้</small></span><input type="number" min={1} max={10} value={save.settings.baseHealth} onChange={(e) => updateSetting('baseHealth', Math.max(1, Math.min(10, Number(e.target.value) || 1)))} /></label><label className="setting-row"><span><strong>โบนัสตอบต่อเนื่อง</strong><small>จำนวนพลังพิเศษเมื่อทำสตรีคครบ</small></span><input type="number" min={0} max={50} step={5} value={save.settings.questionStreakBonus} onChange={(e) => updateSetting('questionStreakBonus', Math.max(0, Math.min(50, Number(e.target.value) || 0)))} /></label><label className="setting-row"><span><strong>จำนวนข้อก่อนรับโบนัส</strong><small>ตอบถูกติดต่อกันกี่ข้อ</small></span><input type="number" min={2} max={10} value={save.settings.questionStreakEvery} onChange={(e) => updateSetting('questionStreakEvery', Math.max(2, Math.min(10, Number(e.target.value) || 2)))} /></label><label className="setting-row"><span><strong>เวลาระหว่างผีเกิด (ms)</strong><small>ปรับความเร็วการบุก</small></span><input type="number" min={2500} max={10000} step={500} value={save.settings.enemySpawnMs} onChange={(e) => updateSetting('enemySpawnMs', Math.max(2500, Math.min(10000, Number(e.target.value) || 2500)))} /></label><label className="setting-row"><span><strong>จำนวนผีพื้นฐานต่อด่าน</strong><small>จำนวนเพิ่มขึ้นตามระดับด่าน</small></span><input type="number" min={5} max={30} value={save.settings.maxEnemies} onChange={(e) => updateSetting('maxEnemies', Math.max(5, Math.min(30, Number(e.target.value) || 5)))} /></label></section><section className="panel settings-card"><h2>📊 ความคืบหน้าผู้เล่น</h2><div className="progress-summary"><div><strong>{save.progress.gamesPlayed}</strong><span>ด่านที่เล่นจบ</span></div><div><strong>{save.progress.answeredQuestions}</strong><span>จำนวนคำตอบ</span></div><div><strong>{save.progress.correctAnswers}</strong><span>ตอบถูก</span></div></div><div className="accuracy-track"><span style={{ width: `${save.progress.answeredQuestions ? save.progress.correctAnswers / save.progress.answeredQuestions * 100 : 0}%` }} /></div><p className="muted">อัตราตอบถูก {save.progress.answeredQuestions ? Math.round(save.progress.correctAnswers / save.progress.answeredQuestions * 100) : 0}%</p><button className="button secondary" onClick={() => goPage('backup')}>จัดการไฟล์สำรองข้อมูล</button><button className="button danger" onClick={() => { if (!window.confirm('ล้างคะแนนและความคืบหน้าทั้งหมดหรือไม่? ชุดคำถามจะไม่ถูกลบ')) return; void commit({ ...save, progress: { score: 0, unlockedStage: 1, starsByStage: {}, gamesPlayed: 0, correctAnswers: 0, answeredQuestions: 0 } }); }}>รีเซ็ตความคืบหน้า</button></section></div></main>}
+    {page === 'settings' && <main className="settings-page"><div className="page-heading"><div><p className="eyebrow">GAME BALANCE</p><h1>ตั้งค่าเกม</h1><p>ปรับสมดุลได้จากข้อมูลที่บันทึกไว้ในเครื่อง</p></div></div><div className="settings-grid"><section className="panel settings-card"><h2>🔊 เสียง</h2><p className="muted">เพลงและเสียงเอฟเฟกต์เล่นได้แม้ออฟไลน์ เล่นแบบปิดเสียงได้ทั้งหมด</p><label className="setting-row"><span><strong>ปิดเสียงทั้งหมด</strong><small>ปุ่ม 🔊 มุมขวาบนก็ใช้สลับได้</small></span><input type="checkbox" checked={save.settings.soundMuted} onChange={(e) => updateSetting('soundMuted', e.target.checked)} /></label><label className="setting-row"><span><strong>ความดังเพลง</strong><small>{Math.round(save.settings.musicVolume * 100)}%</small></span><input type="range" min={0} max={1} step={0.05} value={save.settings.musicVolume} onChange={(e) => updateSetting('musicVolume', Number(e.target.value))} /></label><label className="setting-row"><span><strong>ความดังเอฟเฟกต์</strong><small>{Math.round(save.settings.sfxVolume * 100)}%</small></span><input type="range" min={0} max={1} step={0.05} value={save.settings.sfxVolume} onChange={(e) => updateSetting('sfxVolume', Number(e.target.value))} /></label></section><section className="panel settings-card"><h2>⚖️ สมดุลการเล่น</h2><p className="muted">การเปลี่ยนค่าจะมีผลเมื่อเริ่มด่านใหม่</p><label className="setting-row"><span><strong>พลังอาคมเมื่อตอบถูก</strong><small>พลังที่ได้รับต่อหนึ่งคำตอบถูก</small></span><input type="number" min={5} max={100} step={5} value={save.settings.rewardCorrect} onChange={(e) => updateSetting('rewardCorrect', Math.max(5, Math.min(100, Number(e.target.value) || 5)))} /></label><label className="setting-row"><span><strong>พลังอาคมเริ่มต้น</strong><small>พลังที่มีเมื่อเริ่มด่าน</small></span><input type="number" min={0} max={500} step={25} value={save.settings.startingMana} onChange={(e) => updateSetting('startingMana', Math.max(0, Math.min(500, Number(e.target.value) || 0)))} /></label><label className="setting-row"><span><strong>พลังชีวิตฐาน</strong><small>จำนวนครั้งที่ผีผ่านฐานได้</small></span><input type="number" min={1} max={10} value={save.settings.baseHealth} onChange={(e) => updateSetting('baseHealth', Math.max(1, Math.min(10, Number(e.target.value) || 1)))} /></label><label className="setting-row"><span><strong>โบนัสตอบต่อเนื่อง</strong><small>จำนวนพลังพิเศษเมื่อทำสตรีคครบ</small></span><input type="number" min={0} max={50} step={5} value={save.settings.questionStreakBonus} onChange={(e) => updateSetting('questionStreakBonus', Math.max(0, Math.min(50, Number(e.target.value) || 0)))} /></label><label className="setting-row"><span><strong>จำนวนข้อก่อนรับโบนัส</strong><small>ตอบถูกติดต่อกันกี่ข้อ</small></span><input type="number" min={2} max={10} value={save.settings.questionStreakEvery} onChange={(e) => updateSetting('questionStreakEvery', Math.max(2, Math.min(10, Number(e.target.value) || 2)))} /></label><label className="setting-row"><span><strong>เวลาระหว่างผีเกิด (ms)</strong><small>ปรับความเร็วการบุก</small></span><input type="number" min={2500} max={10000} step={500} value={save.settings.enemySpawnMs} onChange={(e) => updateSetting('enemySpawnMs', Math.max(2500, Math.min(10000, Number(e.target.value) || 2500)))} /></label><label className="setting-row"><span><strong>จำนวนผีพื้นฐานต่อด่าน</strong><small>จำนวนเพิ่มขึ้นตามระดับด่าน</small></span><input type="number" min={5} max={30} value={save.settings.maxEnemies} onChange={(e) => updateSetting('maxEnemies', Math.max(5, Math.min(30, Number(e.target.value) || 5)))} /></label></section><section className="panel settings-card"><h2>📊 ความคืบหน้าผู้เล่น</h2><div className="progress-summary"><div><strong>{save.progress.gamesPlayed}</strong><span>ด่านที่เล่นจบ</span></div><div><strong>{save.progress.answeredQuestions}</strong><span>จำนวนคำตอบ</span></div><div><strong>{save.progress.correctAnswers}</strong><span>ตอบถูก</span></div></div><div className="accuracy-track"><span style={{ width: `${save.progress.answeredQuestions ? save.progress.correctAnswers / save.progress.answeredQuestions * 100 : 0}%` }} /></div><p className="muted">อัตราตอบถูก {save.progress.answeredQuestions ? Math.round(save.progress.correctAnswers / save.progress.answeredQuestions * 100) : 0}%</p><button className="button secondary" onClick={() => goPage('backup')}>จัดการไฟล์สำรองข้อมูล</button><button className="button danger" onClick={() => { if (!window.confirm('ล้างคะแนนและความคืบหน้าทั้งหมดหรือไม่? ชุดคำถามจะไม่ถูกลบ')) return; void commit({ ...save, progress: freshProgress() }); }}>รีเซ็ตความคืบหน้า</button></section></div></main>}
+
+    {page === 'achievements' && (() => {
+      const p = save.progress;
+      const weak = weakestSubject(p);
+      const subjects = ['คณิตศาสตร์', 'ภาษาไทย', 'ภาษาอังกฤษ', 'วิทยาศาสตร์', 'สังคมศึกษา'] as const;
+      const totalStars = Object.values(p.starsByStage).reduce((a, b) => a + b, 0);
+      return <main className="achievements-page">
+        <div className="page-heading"><div><p className="eyebrow">SPIRIT ARCHIVE</p><h1>บันทึกความสำเร็จ</h1><p>ดูคะแนนความรู้ สถิติที่ดีที่สุด และวิชาที่ควรฝึกเพิ่ม</p></div></div>
+        <div className="achievement-summary">
+          <div><strong>{p.knowledgeScore.toLocaleString('th-TH')}</strong><span>คะแนนความรู้</span></div>
+          <div><strong>{p.bestStreak}</strong><span>ตอบถูกต่อเนื่องสูงสุด</span></div>
+          <div><strong>{totalStars}/{STAGES.length * 3} ⭐</strong><span>ดาวทั้งหมด</span></div>
+          <div><strong>{p.achievements.length}/{ACHIEVEMENTS.length}</strong><span>ความสำเร็จ</span></div>
+        </div>
+        <div className="achievement-grid">
+          <section className="panel"><h2>📊 ความแม่นยำรายวิชา</h2>
+            {subjects.map((subject) => { const st = p.subjectStats[subject]; const pct = st && st.answered ? Math.round(st.correct / st.answered * 100) : 0; return <div key={subject} className={`subject-row ${weak === subject ? 'weak' : ''}`}><span>{subject}{weak === subject && <b> · ควรฝึกเพิ่ม</b>}</span><div className="accuracy-track"><span style={{ width: `${pct}%` }} /></div><em>{st ? `${st.correct}/${st.answered} (${pct}%)` : 'ยังไม่ได้ตอบ'}</em></div>; })}
+          </section>
+          <section className="panel"><h2>🏆 สถิติดีที่สุดรายด่าน</h2>
+            <table className="best-table"><thead><tr><th>ด่าน</th><th>ดาว</th><th>คะแนนสูงสุด</th><th>กำจัดผีสูงสุด</th><th>ชนะ/เล่น</th></tr></thead><tbody>
+              {STAGES.map((stage) => { const b = p.bestByStage[String(stage.id)]; const stars = p.starsByStage[String(stage.id)] ?? 0; return <tr key={stage.id} className={b ? '' : 'unplayed'}><td>{stage.id}</td><td>{'★'.repeat(stars)}{'☆'.repeat(3 - stars)}</td><td>{b?.bestScore ?? '–'}</td><td>{b?.bestKills ?? '–'}</td><td>{b ? `${b.wins}/${b.plays}` : '–'}</td></tr>; })}
+            </tbody></table>
+          </section>
+        </div>
+        <section className="panel"><h2>🎖️ เหรียญความสำเร็จ</h2><div className="badge-grid">
+          {ACHIEVEMENTS.map((a) => { const owned = p.achievements.includes(a.id); return <div key={a.id} className={`badge ${owned ? 'owned' : 'locked'}`}><span className="badge-icon">{owned ? a.icon : '🔒'}</span><strong>{a.name}</strong><small>{a.description}</small></div>; })}
+        </div></section>
+      </main>;
+    })()}
 
     {page === 'backup' && <main className="backup-page"><div className="page-heading"><div><p className="eyebrow">LOCAL DATA · NO CLOUD API</p><h1>นำเข้า / ส่งออกข้อมูล</h1><p>ย้ายชุดคำถามระหว่างคอมพิวเตอร์และ iPad ด้วยไฟล์ JSON หรือ CSV</p></div></div><div className="backup-grid"><section className="panel backup-card"><div className="backup-icon">📚</div><h2>ชุดคำถาม</h2><p>ส่งออกเฉพาะชุดคำถามที่เลือก หรือดาวน์โหลดไฟล์ตัวอย่างไปแก้ไขในโปรแกรมตารางคำนวณ</p><label className="field-label">ชุดคำถาม<select value={save.activeSetId} onChange={(e) => void commit({ ...save, activeSetId: e.target.value })}>{save.sets.map((s) => <option key={s.id} value={s.id}>{s.name} · {save.questions.filter((q) => q.setId === s.id).length} ข้อ</option>)}</select></label><div className="button-stack"><button className="button primary" onClick={() => void exportQuestionsJson()}>↓ ส่งออก JSON</button><button className="button secondary" onClick={() => { if (!activeSet) return; const qs = save.questions.filter((q) => q.setId === activeSet.id); downloadFile('quiz-defense-questions.csv', csvExportForSet(activeSet.name, qs), 'text/csv;charset=utf-8'); }}>↓ ส่งออก CSV</button><label className="button ghost file-button">↑ นำเข้า JSON<input type="file" accept=".json,application/json" onChange={(e) => { void importJson(e.target.files?.[0], 'add'); e.currentTarget.value = ''; }} /></label><label className="button ghost file-button">แทนที่ชุดคำถาม JSON<input type="file" accept=".json,application/json" onChange={(e) => { void importJson(e.target.files?.[0], 'replace'); e.currentTarget.value = ''; }} /></label><label className="button ghost file-button">↑ นำเข้า CSV<input type="file" accept=".csv,text/csv" onChange={async (e) => { const file = e.target.files?.[0]; if (file) { try { const { csvToQuestions } = await import('./utils/csv'); const parsed = csvToQuestions(await file.text()); const suffix = Date.now().toString(36); const sets = parsed.sets.map((s, i) => ({ ...s, id: `${s.id}-${suffix}-${i}`, questionIds: [] as string[] })); const map = new Map(parsed.sets.map((s, i) => [s.id, sets[i].id])); const questions = parsed.questions.map((q, i) => ({ ...q, id: `${q.id}-${suffix}-${i}`, setId: map.get(q.setId)! })); sets.forEach((s) => { s.questionIds = questions.filter((q) => q.setId === s.id).map((q) => q.id); }); await commit({ ...save, sets: [...save.sets, ...sets], questions: [...save.questions, ...questions], activeSetId: sets[0]?.id ?? save.activeSetId }); setBackupNotice(`นำเข้า CSV สำเร็จ ${questions.length} ข้อ`); } catch (error) { setBackupNotice(error instanceof Error ? error.message : 'อ่าน CSV ไม่สำเร็จ'); } } e.currentTarget.value = ''; }} /></label></div></section><section className="panel backup-card"><div className="backup-icon">💾</div><h2>สำรองข้อมูลทั้งหมด</h2><p>เก็บชุดคำถาม คะแนน ดาว ด่านที่ปลดล็อก และการตั้งค่าทั้งหมดในไฟล์เดียว</p><div className="backup-includes">{['ชุดคำถามและคำถามทั้งหมด', 'คะแนนและจำนวนดาว', 'ด่านที่ปลดล็อก', 'การตั้งค่าเกม'].map((item) => <div key={item}>✓ {item}</div>)}</div><button className="button primary" onClick={() => downloadFile('quiz-defense-backup.json', JSON.stringify({ app: 'quiz-defense-backup', version: 1, exportedAt: new Date().toISOString(), save }, null, 2), 'application/json;charset=utf-8')}>↓ ส่งออกข้อมูลสำรอง</button><label className="button secondary file-button">↑ กู้คืนข้อมูลสำรอง<input type="file" accept=".json,application/json" onChange={(e) => { void importJson(e.target.files?.[0], 'replace'); e.currentTarget.value = ''; }} /></label><p className="warning-text">การกู้คืนจะเขียนทับข้อมูลปัจจุบัน ควรส่งออกสำรองข้อมูลก่อนทุกครั้ง</p></section></div>{backupNotice && <div className="notice backup-notice" role="status">{backupNotice}</div>}<section className="panel data-location-panel"><span className="data-shield">🛡️</span><div><h3>ข้อมูลเป็นของคุณ อยู่ในเครื่องนี้</h3><p>Quiz Defense ใช้ IndexedDB ในเบราว์เซอร์ ไม่ส่งคำถามหรือคะแนนไปที่เซิร์ฟเวอร์ การล้างข้อมูลเว็บไซต์หรือถอนข้อมูล Safari อาจทำให้ข้อมูลในเครื่องหายได้ ควรสำรองข้อมูลเป็นระยะ</p></div></section></main>}
 

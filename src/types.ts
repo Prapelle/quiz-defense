@@ -29,6 +29,22 @@ export interface PlayerProgress {
   gamesPlayed: number;
   correctAnswers: number;
   answeredQuestions: number;
+  /** Points from correct answers and streaks (see game/progress.ts). */
+  knowledgeScore: number;
+  bestStreak: number;
+  wins: number;
+  bestByStage: Record<string, StageBest>;
+  subjectStats: Partial<Record<Subject, { answered: number; correct: number }>>;
+  achievements: string[];
+}
+
+export interface StageBest {
+  bestScore: number;
+  bestKills: number;
+  /** Highest base health left in a won battle. */
+  bestHealth: number;
+  plays: number;
+  wins: number;
 }
 
 export interface GameSettings {
@@ -40,11 +56,18 @@ export interface GameSettings {
   enemySpawnMs: number;
   maxEnemies: number;
   questionCooldownMs: number;
+  soundMuted: boolean;
+  /** 0–1 */
+  musicVolume: number;
+  /** 0–1 */
+  sfxVolume: number;
 }
 
 export interface GameSave {
   /** Version of the defaults/settings migration already applied to this local save. */
   settingsVersion?: number;
+  /** Version of built-in question content already merged into this save. */
+  contentVersion?: number;
   questions: QuizQuestion[];
   sets: QuestionSet[];
   progress: PlayerProgress;

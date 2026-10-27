@@ -12,6 +12,9 @@ export function QuestionManager({ save, onChange }: Props) {
   const [query, setQuery] = useState('');
   const [subjectFilter, setSubjectFilter] = useState('ทั้งหมด');
   const [difficultyFilter, setDifficultyFilter] = useState('ทั้งหมด');
+  const [gradeFilter, setGradeFilter] = useState('ทั้งหมด');
+  const [setFilter, setSetFilter] = useState('ทั้งหมด');
+  const grades = useMemo(() => [...new Set(save.questions.map((q) => q.grade))].sort((a, b) => a.localeCompare(b, 'th')), [save.questions]);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<Omit<QuizQuestion, 'id'>>(() => ({ ...emptyForm(), setId: save.activeSetId || save.sets[0]?.id || '' }));
   const [notice, setNotice] = useState('');
@@ -20,8 +23,8 @@ export function QuestionManager({ save, onChange }: Props) {
 
   const filtered = useMemo(() => save.questions.filter((q) => {
     const matchesText = `${q.question} ${q.explanation} ${q.choices.join(' ')}`.toLowerCase().includes(query.toLowerCase());
-    return matchesText && (subjectFilter === 'ทั้งหมด' || q.subject === subjectFilter) && (difficultyFilter === 'ทั้งหมด' || q.difficulty === difficultyFilter);
-  }), [save.questions, query, subjectFilter, difficultyFilter]);
+    return matchesText && (subjectFilter === 'ทั้งหมด' || q.subject === subjectFilter) && (difficultyFilter === 'ทั้งหมด' || q.difficulty === difficultyFilter) && (gradeFilter === 'ทั้งหมด' || q.grade === gradeFilter) && (setFilter === 'ทั้งหมด' || q.setId === setFilter);
+  }), [save.questions, query, subjectFilter, difficultyFilter, gradeFilter, setFilter]);
 
   function blankForSet(setId = save.activeSetId) { setEditingId(null); setForm({ ...emptyForm(), setId }); setNotice(''); }
   function editQuestion(q: QuizQuestion) { setEditingId(q.id); setForm({ ...q }); setNotice(''); }
@@ -85,7 +88,7 @@ export function QuestionManager({ save, onChange }: Props) {
       </section>
       <section className="panel list-panel">
         <div className="panel-title"><span>คลังคำถาม <strong className="count-pill">{filtered.length}</strong></span><span className="muted-small">บันทึกในเครื่อง</span></div>
-        <div className="filter-row"><input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="⌕ ค้นหาคำถาม..." /><select value={subjectFilter} onChange={(e) => setSubjectFilter(e.target.value)}><option>ทั้งหมด</option>{subjects.map((s) => <option key={s}>{s}</option>)}</select><select value={difficultyFilter} onChange={(e) => setDifficultyFilter(e.target.value)}><option>ทั้งหมด</option>{difficulties.map((d) => <option key={d}>{d}</option>)}</select></div>
+        <div className="filter-row"><input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="⌕ ค้นหาคำถาม..." /><select value={subjectFilter} onChange={(e) => setSubjectFilter(e.target.value)}><option>ทั้งหมด</option>{subjects.map((s) => <option key={s}>{s}</option>)}</select><select value={difficultyFilter} onChange={(e) => setDifficultyFilter(e.target.value)}><option>ทั้งหมด</option>{difficulties.map((d) => <option key={d}>{d}</option>)}</select><select aria-label="กรองตามชั้นเรียน" value={gradeFilter} onChange={(e) => setGradeFilter(e.target.value)}><option value="ทั้งหมด">ทุกชั้น</option>{grades.map((g) => <option key={g} value={g}>{g}</option>)}</select><select aria-label="กรองตามชุดคำถาม" value={setFilter} onChange={(e) => setSetFilter(e.target.value)}><option value="ทั้งหมด">ทุกชุด</option>{save.sets.map((set) => <option key={set.id} value={set.id}>{set.name}</option>)}</select></div>
         <div className="question-list">{filtered.map((q) => <article className="question-row" key={q.id}><div className="question-bullet">Q</div><div className="question-row-content"><p>{q.question}</p><div className="question-meta"><span>{q.subject}</span><span>{q.grade}</span><span className={`difficulty ${q.difficulty}`}>{q.difficulty}</span></div><div className="correct-snippet">✓ {String.fromCharCode(65 + q.answerIndex)} · {q.choices[q.answerIndex]}</div></div><div className="row-actions"><button title="แก้ไข" onClick={() => editQuestion(q)}>✎</button><button title="ลบ" onClick={() => deleteQuestion(q)}>⌫</button></div></article>)}{filtered.length === 0 && <div className="empty-state">ไม่พบคำถามที่ตรงกับการค้นหา</div>}</div>
       </section>
     </div>
