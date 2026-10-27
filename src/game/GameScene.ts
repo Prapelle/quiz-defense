@@ -41,6 +41,11 @@ export class GameScene extends Phaser.Scene {
   private waveBreakElapsed = 0;
   private currentWaveIndex = 0;
   private waveWaiting = false;
+  private speedMultiplier: 1 | 2 | 3 = 1;
+  private simulationTime = 0;
+  private quizElapsed = 0;
+  private quizReady = false;
+  private quizModalOpen = false;
   private uiTexts = new Map<string, Phaser.GameObjects.Text>();
   private gameSettings: GameSettings = { rewardCorrect: GAME_SETTINGS.rewardCorrect, startingMana: GAME_SETTINGS.startingMana, baseHealth: GAME_SETTINGS.baseHealth, questionStreakBonus: GAME_SETTINGS.questionStreakBonus, questionStreakEvery: GAME_SETTINGS.questionStreakEvery, enemySpawnMs: GAME_SETTINGS.enemySpawnMs, maxEnemies: GAME_SETTINGS.maxEnemies, questionCooldownMs: GAME_SETTINGS.questionCooldownMs };
 
@@ -60,9 +65,13 @@ export class GameScene extends Phaser.Scene {
     this.events.on('selected-plant', (id: PlantId) => { this.selectedPlant = id; this.refreshUi(); });
     this.events.on('reset-game', (stage: number) => this.resetGame(stage));
     this.events.on('set-game-settings', (settings: GameSettings) => { this.gameSettings = { ...this.gameSettings, ...settings }; });
+    this.events.on('set-speed', (speed: 1 | 2 | 3) => { this.speedMultiplier = speed; });
     this.events.on('answer-question', (data: { correct: boolean; reward: number; streakEvery: number; streakBonus: number }) => this.applyAnswer(data));
-    this.events.on('request-question', () => {
-      if (this.status === 'playing') this.game.events.emit('quiz-requested');
+    this.events.on('request-question', () => this.requestQuiz());
+    this.events.on('quiz-unavailable', () => {
+      this.quizModalOpen = false;
+      this.quizReady = false;
+      this.quizElapsed = 0;
     });
     this.events.on('scene-ready', () => this.pushStats());
     this.resetGame(1);
@@ -70,6 +79,17 @@ export class GameScene extends Phaser.Scene {
 
   update(_time: number, delta: number): void {
     if (this.status !== 'playing') return;
+    const realDelta = delta;
+    const scaledDelta = realDelta * this.speedMultiplier;
+    this.simulationTime += scaledDelta;
+    // Quiz cooldown is wall-clock time, independent of accelerated battle speed.
+    this.quizElapsed += realDelta;
+    if (this.quizElapsed >= 30000 && !this.quizModalOpen) {
+      this.quizElapsed = 0;
+      this.quizReady = true;
+      this.requestQuiz();
+    }
+    delta = scaledDelta;
     this.spawnElapsed += delta;
     const stageConfig = STAGES.find((s) => s.id === this.stage) ?? STAGES[0];
     const waves: number[] = stageConfig.waves ?? [stageConfig.enemies];
@@ -95,7 +115,7 @@ export class GameScene extends Phaser.Scene {
         this.spawnGhost(stageConfig.allowedGhosts[this.spawned % stageConfig.allowedGhosts.length]);
       }
     }
-    const now = this.time.now;
+    const now = this.simulationTime;
     for (const plant of [...this.plants]) this.updatePlant(plant, now);
     for (const ghost of [...this.ghosts]) this.updateGhost(ghost, now, delta);
     this.updateProjectiles(delta);
@@ -179,7 +199,7 @@ export class GameScene extends Phaser.Scene {
     // Keep the placement ring and HP bar attached to the protector sprite.
     sprite.setData('ring', ring);
     sprite.setData('hpBar', hpBar);
-    this.plants.push({ config, row, col, x: px, y: py, hp: config.hp, sprite, lastAction: this.time.now });
+    this.plants.push({ config, row, col, x: px, y: py, hp: config.hp, sprite, lastAction: this.simulationTime });
     this.pushStats();
   }
 
@@ -209,8 +229,8 @@ export class GameScene extends Phaser.Scene {
     }
     if (plant.config.manaEveryMs && now - plant.lastAction >= plant.config.manaEveryMs) {
       plant.lastAction = now;
-      this.mana += 15;
-      this.game.events.emit('toast', 'กุมารวิญญาณสร้างพลังอาคม +15');
+      this.mana += 20;
+      this.game.events.emit('toast', 'กุมารวิญญาณสร้างพลังอาคม +20');
       this.pushStats();
     }
     if (!plant.config.attackDamage || now - plant.lastAction < plant.config.attackMs) return;
@@ -264,7 +284,7 @@ export class GameScene extends Phaser.Scene {
         if (bullet.splash > 0) {
           for (const target of [...this.ghosts]) if (target.row === bullet.target.row && Math.abs(target.x - bullet.target.x) < bullet.splash) this.damageGhost(target, bullet.damage);
         } else this.damageGhost(bullet.target, bullet.damage);
-        if (bullet.slowMs) bullet.target.slowUntil = this.time.now + bullet.slowMs;
+        if (bullet.slowMs) bullet.target.slowUntil = this.simulationTime + bullet.slowMs;
         bullet.circle.destroy(); this.projectiles = this.projectiles.filter((p) => p !== bullet);
       } else {
         bullet.x += dx / distance * step; bullet.y += dy / distance * step; bullet.circle.setPosition(bullet.x, bullet.y);
@@ -285,8 +305,21 @@ export class GameScene extends Phaser.Scene {
     }
   }
 
+  private requestQuiz(): void {
+    if (this.status !== 'playing' || this.quizModalOpen) return;
+    if (!this.quizReady) {
+      this.game.events.emit('toast', `คำถามถัดไปจะมาใน ${Math.max(1, Math.ceil((30000 - this.quizElapsed) / 1000))} วินาที`);
+      return;
+    }
+    this.quizModalOpen = true;
+    this.game.events.emit('quiz-requested');
+  }
+
   private applyAnswer(data: { correct: boolean; reward: number; streakEvery: number; streakBonus: number }): void {
     if (this.status !== 'playing') return;
+    this.quizReady = false;
+    this.quizModalOpen = false;
+    this.quizElapsed = 0;
     const resolution = resolveQuizAnswer(data.correct, this.streak, data.reward, data.streakEvery, data.streakBonus);
     this.streak = resolution.nextStreak;
     if (data.correct) {
@@ -313,6 +346,7 @@ export class GameScene extends Phaser.Scene {
     this.stage = Math.max(1, Math.min(3, stage));
     this.mana = this.gameSettings.startingMana; this.health = this.gameSettings.baseHealth; this.score = 0; this.kills = 0; this.spawned = 0; this.streak = 0;
     this.spawnElapsed = 0; this.waveBreakElapsed = 0; this.currentWaveIndex = 0; this.waveWaiting = false; this.status = 'playing'; this.selectedPlant = 'lotus';
+    this.speedMultiplier = 1; this.simulationTime = 0; this.quizElapsed = 0; this.quizReady = false; this.quizModalOpen = false;
     this.unlockedPlants = new Set(PLANTS.filter((plant) => plant.unlockAtStreak === 0).map((plant) => plant.id));
     this.pushStats();
   }
