@@ -20,7 +20,7 @@ export interface GameStats {
   status: 'playing' | 'won' | 'lost';
 }
 interface PlantUnit { config: PlantConfig; row: number; col: number; x: number; y: number; hp: number; sprite: Phaser.GameObjects.Image | Phaser.GameObjects.Text; lastAction: number; }
-interface GhostUnit { config: GhostConfig; row: number; x: number; y: number; hp: number; sprite: Phaser.GameObjects.Image | Phaser.GameObjects.Text; slowUntil: number; lastAttack: number; }
+interface GhostUnit { config: GhostConfig; row: number; x: number; y: number; hp: number; sprite: Phaser.GameObjects.Image | Phaser.GameObjects.Text; baseScaleX: number; baseScaleY: number; slowUntil: number; lastAttack: number; }
 interface Projectile { circle: Phaser.GameObjects.Arc; x: number; y: number; target: GhostUnit; speed: number; damage: number; splash: number; slowMs?: number; }
 
 export class GameScene extends Phaser.Scene {
@@ -47,6 +47,8 @@ export class GameScene extends Phaser.Scene {
   private quizReady = false;
   private quizModalOpen = false;
   private uiTexts = new Map<string, Phaser.GameObjects.Text>();
+  private worldGraphics: Phaser.GameObjects.Graphics | null = null;
+  private worldDecor: Phaser.GameObjects.GameObject[] = [];
   private gameSettings: GameSettings = { rewardCorrect: GAME_SETTINGS.rewardCorrect, startingMana: GAME_SETTINGS.startingMana, baseHealth: GAME_SETTINGS.baseHealth, questionStreakBonus: GAME_SETTINGS.questionStreakBonus, questionStreakEvery: GAME_SETTINGS.questionStreakEvery, enemySpawnMs: GAME_SETTINGS.enemySpawnMs, maxEnemies: GAME_SETTINGS.maxEnemies, questionCooldownMs: GAME_SETTINGS.questionCooldownMs };
 
   constructor() { super('GameScene'); }
@@ -84,7 +86,7 @@ export class GameScene extends Phaser.Scene {
     this.simulationTime += scaledDelta;
     // Quiz cooldown is wall-clock time, independent of accelerated battle speed.
     this.quizElapsed += realDelta;
-    if (this.quizElapsed >= 30000 && !this.quizModalOpen) {
+    if (this.quizElapsed >= GAME_SETTINGS.questionIntervalMs && !this.quizModalOpen) {
       this.quizElapsed = 0;
       this.quizReady = true;
       this.requestQuiz();
@@ -124,49 +126,110 @@ export class GameScene extends Phaser.Scene {
   }
 
   private drawWorld(): void {
-    const bg = this.add.graphics();
-    bg.fillGradientStyle(0x0d1731, 0x152648, 0x172a42, 0x0a1728, 1);
+    this.worldGraphics?.destroy();
+    this.worldDecor.forEach((item) => item.destroy());
+    this.worldDecor = [];
+
+    const stageConfig = STAGES.find((item) => item.id === this.stage) ?? STAGES[0];
+    const theme = this.stage === 1
+      ? { skyA: 0x0d1731, skyB: 0x152648, skyC: 0x172a42, skyD: 0x0a1728, field: 0x1b3a35, tileA: 0x527a51, tileB: 0x466d49, tileLine: 0xa8d38c, border: 0x7c5b3b, gate: 0x2b2540, trim: 0xe3b966 }
+      : this.stage === 2
+        ? { skyA: 0x09261f, skyB: 0x174b38, skyC: 0x22563a, skyD: 0x071b19, field: 0x173d2e, tileA: 0x47774a, tileB: 0x315e3c, tileLine: 0x9acb76, border: 0x37533a, gate: 0x173a2e, trim: 0xb6d875 }
+        : { skyA: 0x17192f, skyB: 0x343052, skyC: 0x3d3245, skyD: 0x0e1425, field: 0x333744, tileA: 0x5b6260, tileB: 0x464d54, tileLine: 0xb3b9a1, border: 0x5b493d, gate: 0x28233b, trim: 0xe0b879 };
+
+    const bg = this.add.graphics().setDepth(-10);
+    this.worldGraphics = bg;
+    bg.fillGradientStyle(theme.skyA, theme.skyB, theme.skyC, theme.skyD, 1);
     bg.fillRect(0, 0, GAME_SETTINGS.canvasWidth, GAME_SETTINGS.canvasHeight);
-    // Moon and distant village silhouettes.
-    bg.fillStyle(0xc6e5ff, 0.9); bg.fillCircle(1070, 55, 31);
-    bg.fillStyle(0x0b1730, 0.4); bg.fillCircle(1082, 46, 31);
-    bg.fillStyle(0x0a1327, 0.95);
-    for (let i = 0; i < 8; i += 1) {
-      const x = 350 + i * 110;
-      bg.fillTriangle(x - 34, 115, x, 73 - (i % 3) * 8, x + 34, 115);
-      bg.fillRect(x - 26, 115, 52, 27);
-      bg.fillStyle(0xffcf6b, 0.18); bg.fillCircle(x, 127, 3); bg.fillStyle(0x0a1327, 0.95);
+
+    // Each stage has its own landmark silhouette and atmosphere.
+    if (this.stage === 1) {
+      bg.fillStyle(0xc6e5ff, 0.9); bg.fillCircle(1070, 55, 31);
+      bg.fillStyle(0x0b1730, 0.4); bg.fillCircle(1082, 46, 31);
+      bg.fillStyle(0x0a1327, 0.95);
+      for (let i = 0; i < 8; i += 1) {
+        const x = 350 + i * 110;
+        bg.fillTriangle(x - 34, 115, x, 73 - (i % 3) * 8, x + 34, 115);
+        bg.fillRect(x - 26, 115, 52, 27);
+        bg.fillStyle(0xffcf6b, 0.18); bg.fillCircle(x, 127, 3); bg.fillStyle(0x0a1327, 0.95);
+      }
+    } else if (this.stage === 2) {
+      bg.fillStyle(0x071c16, 0.95);
+      for (let i = 0; i < 10; i += 1) {
+        const x = 230 + i * 108;
+        bg.fillRoundedRect(x, 24 + (i % 3) * 10, 13, 112, 5);
+        bg.fillRoundedRect(x + 17, 43 + (i % 2) * 8, 7, 83, 3);
+        bg.fillStyle(0x5e9b57, 0.72);
+        bg.fillTriangle(x - 25, 53 + (i % 3) * 6, x + 8, 31 + (i % 2) * 8, x + 38, 58 + (i % 2) * 5);
+        bg.fillTriangle(x - 16, 76, x + 9, 56, x + 32, 84);
+        bg.fillStyle(0x071c16, 0.95);
+      }
+      bg.fillStyle(0xa6d46a, 0.75); bg.fillCircle(1070, 55, 23);
+      bg.fillStyle(theme.skyB, 1); bg.fillCircle(1080, 47, 23);
+    } else {
+      bg.fillStyle(0x171627, 0.98);
+      for (let i = 0; i < 5; i += 1) {
+        const x = 390 + i * 155;
+        bg.fillTriangle(x - 60, 113, x, 60 - (i % 2) * 12, x + 60, 113);
+        bg.fillRect(x - 42, 108, 84, 20);
+        bg.fillStyle(0xe1b56b, 0.18); bg.fillRect(x - 24, 112, 7, 20); bg.fillRect(x + 17, 112, 7, 20);
+        bg.fillStyle(0x171627, 0.98);
+      }
+      bg.fillStyle(0x80718a, 0.85); bg.fillCircle(1070, 55, 27);
+      bg.fillStyle(theme.skyB, 1); bg.fillCircle(1080, 47, 27);
     }
-    bg.fillStyle(0x1b3a35, 1); bg.fillRect(0, 119, 1280, 430);
-    // Lane grid with alternating mossy tiles.
+
+    bg.fillStyle(theme.field, 1); bg.fillRect(0, 119, 1280, 430);
     for (let row = 0; row < GAME_SETTINGS.gridRows; row += 1) {
       for (let col = 0; col < GAME_SETTINGS.gridCols; col += 1) {
         const x = 158 + col * 104;
         const y = 116 + row * 83;
-        const colour = (row + col) % 2 === 0 ? 0x527a51 : 0x466d49;
+        const colour = (row + col) % 2 === 0 ? theme.tileA : theme.tileB;
         bg.fillStyle(colour, 0.93); bg.fillRoundedRect(x, y, 100, 79, 8);
-        bg.lineStyle(1, 0xa8d38c, 0.19); bg.strokeRoundedRect(x, y, 100, 79, 8);
-        bg.fillStyle(0xc1dc82, 0.13); bg.fillCircle(x + 16 + ((row * 3 + col * 2) % 65), y + 17 + ((row + col) % 36), 2);
+        bg.lineStyle(1, theme.tileLine, 0.22); bg.strokeRoundedRect(x, y, 100, 79, 8);
+        if (this.stage === 2) {
+          bg.fillStyle(0xb9d987, 0.13);
+          bg.fillTriangle(x + 12, y + 62, x + 24, y + 44, x + 27, y + 64);
+        } else if (this.stage === 3) {
+          bg.lineStyle(2, 0x161c2b, 0.16);
+          bg.lineBetween(x + 15, y + 17, x + 42, y + 17);
+          bg.lineBetween(x + 60, y + 55, x + 88, y + 55);
+        } else {
+          bg.fillStyle(0xc1dc82, 0.13); bg.fillCircle(x + 16 + ((row * 3 + col * 2) % 65), y + 17 + ((row + col) % 36), 2);
+        }
       }
     }
-    // Protective boundary, gate and little lanterns.
-    bg.fillStyle(0x7c5b3b, 1); bg.fillRoundedRect(20, 111, 120, 445, 12);
-    bg.fillStyle(0x2b2540, 1); bg.fillRoundedRect(37, 133, 86, 398, 8);
-    bg.lineStyle(3, 0xe3b966, 0.9); bg.strokeRoundedRect(36, 132, 88, 400, 8);
-    bg.fillStyle(0xffae42, 0.35); bg.fillCircle(78, 149, 35); bg.fillStyle(0xffc75e, 1); bg.fillCircle(78, 149, 10);
+    bg.fillStyle(theme.border, 1); bg.fillRoundedRect(20, 111, 120, 445, 12);
+    bg.fillStyle(theme.gate, 1); bg.fillRoundedRect(37, 133, 86, 398, 8);
+    bg.lineStyle(3, theme.trim, 0.9); bg.strokeRoundedRect(36, 132, 88, 400, 8);
+    bg.fillStyle(this.stage === 3 ? 0xc18a6e : this.stage === 2 ? 0x90c75d : 0xffae42, 0.35); bg.fillCircle(78, 149, 35);
+    bg.fillStyle(theme.trim, 1); bg.fillCircle(78, 149, 10);
     bg.fillStyle(0x101a2a, 1); bg.fillRoundedRect(23, 550, 112, 45, 10);
-    bg.lineStyle(2, 0xe7bb62, 0.8); bg.strokeRoundedRect(23, 550, 112, 45, 10);
-    this.add.text(79, 571, 'หมู่บ้าน', { fontFamily: 'Tahoma, Arial, sans-serif', fontSize: '17px', color: '#fff0c7', fontStyle: 'bold' }).setOrigin(0.5);
-    this.add.text(640, 22, 'หมู่บ้านใต้แสงจันทร์', { fontFamily: 'Tahoma, Arial, sans-serif', fontSize: '20px', color: '#f7e3b4', fontStyle: 'bold', stroke: '#18213a', strokeThickness: 4 }).setOrigin(0.5);
-    this.add.text(640, 50, 'แตะช่องว่างเพื่อวางตัวละคร · ตอบคำถามเพื่อรับพลังอาคม', { fontFamily: 'Tahoma, Arial, sans-serif', fontSize: '14px', color: '#d7e6f5', stroke: '#18213a', strokeThickness: 3 }).setOrigin(0.5);
-    this.makeUiText('mana', 176, 25, '☀ 150', '#ffdc79', '22px');
-    this.makeUiText('health', 1050, 25, '❤ 5/5', '#ff8292', '22px');
-    this.makeUiText('score', 1150, 25, '★ 0', '#fff0b4', '18px');
-    this.makeUiText('wave', 1150, 54, 'ผี 0/10', '#deefff', '14px');
+    bg.lineStyle(2, theme.trim, 0.8); bg.strokeRoundedRect(23, 550, 112, 45, 10);
+
+    const baseLabels = ['หมู่บ้าน', 'ป่ากล้วย', 'วัดร้าง'];
+    const baseLabel = this.add.text(79, 571, baseLabels[this.stage - 1] ?? 'ฐานป้องกัน', {
+      fontFamily: 'Tahoma, Arial, sans-serif', fontSize: '17px', color: '#fff0c7', fontStyle: 'bold',
+    }).setOrigin(0.5).setDepth(10);
+    const stageTitle = this.add.text(640, 22, stageConfig.name, {
+      fontFamily: 'Tahoma, Arial, sans-serif', fontSize: '20px', color: '#f7e3b4',
+      fontStyle: 'bold', stroke: '#18213a', strokeThickness: 4,
+    }).setOrigin(0.5).setDepth(20);
+    const instructions = this.add.text(640, 50, 'แตะช่องว่างเพื่อวางตัวละคร · ตอบคำถามเพื่อรับพลังอาคม', {
+      fontFamily: 'Tahoma, Arial, sans-serif', fontSize: '14px', color: '#d7e6f5',
+      stroke: '#18213a', strokeThickness: 3,
+    }).setOrigin(0.5).setDepth(20);
+    this.worldDecor.push(baseLabel, stageTitle, instructions);
+
+    if (!this.uiTexts.has('mana')) this.makeUiText('mana', 176, 25, `☀ ${this.gameSettings.startingMana}`, '#ffdc79', '22px');
+    if (!this.uiTexts.has('health')) this.makeUiText('health', 1050, 25, `❤ ${this.health}/${this.gameSettings.baseHealth}`, '#ff8292', '22px');
+    if (!this.uiTexts.has('score')) this.makeUiText('score', 1150, 25, '★ 0', '#fff0b4', '18px');
+    if (!this.uiTexts.has('wave')) this.makeUiText('wave', 1150, 54, 'ผี 0/10', '#deefff', '14px');
   }
 
   private makeUiText(key: string, x: number, y: number, value: string, color: string, fontSize: string): void {
     const text = this.add.text(x, y, value, { fontFamily: 'Tahoma, Arial, sans-serif', fontSize, color, fontStyle: 'bold', stroke: '#101a2e', strokeThickness: 4 }).setOrigin(0.5);
+    text.setDepth(30);
     this.uiTexts.set(key, text);
   }
 
@@ -213,7 +276,7 @@ export class GameScene extends Phaser.Scene {
       ? this.add.image(x, y, 'character-atlas', ghostFrame).setDisplaySize(config.id === 'pret' ? 62 : 56, config.id === 'pret' ? 62 : 56).setDepth(6)
       : this.add.text(x, y, config.emoji, { fontFamily: 'Apple Color Emoji, Segoe UI Emoji, sans-serif', fontSize: `${config.size}px`, stroke: '#1c1831', strokeThickness: 3 }).setOrigin(0.5).setDepth(6);
     sprite.setData('hpBar', this.add.graphics().setDepth(7));
-    this.ghosts.push({ config, row, x, y, hp: config.hp, sprite, slowUntil: 0, lastAttack: 0 });
+    this.ghosts.push({ config, row, x, y, hp: config.hp, sprite, baseScaleX: sprite.scaleX, baseScaleY: sprite.scaleY, slowUntil: 0, lastAttack: 0 });
     this.spawned += 1;
     this.pushStats();
   }
@@ -229,8 +292,9 @@ export class GameScene extends Phaser.Scene {
     }
     if (plant.config.manaEveryMs && now - plant.lastAction >= plant.config.manaEveryMs) {
       plant.lastAction = now;
-      this.mana += 20;
-      this.game.events.emit('toast', 'กุมารวิญญาณสร้างพลังอาคม +20');
+      const manaGain = plant.config.manaGain ?? 0;
+      this.mana += manaGain;
+      this.game.events.emit('toast', `กุมารวิญญาณสร้างพลังอาคม +${manaGain}`);
       this.pushStats();
     }
     if (!plant.config.attackDamage || now - plant.lastAction < plant.config.attackMs) return;
@@ -295,9 +359,11 @@ export class GameScene extends Phaser.Scene {
   private damageGhost(ghost: GhostUnit, damage: number): void {
     if (!this.ghosts.includes(ghost)) return;
     ghost.hp -= damage;
-    ghost.sprite.setScale(1.12); this.time.delayedCall(80, () => ghost.sprite.active && ghost.sprite.setScale(1));
+    ghost.sprite.setScale(ghost.baseScaleX * 1.12, ghost.baseScaleY * 1.12); this.time.delayedCall(80, () => { if (ghost.sprite.active) ghost.sprite.setScale(ghost.baseScaleX, ghost.baseScaleY); });
     if (ghost.hp <= 0) {
       this.kills += 1; this.score += ghost.config.reward;
+      this.mana += GAME_SETTINGS.killManaReward;
+      this.game.events.emit('toast', `กำจัดผีได้ +${GAME_SETTINGS.killManaReward} พลังอาคม`);
       const hpBar = ghost.sprite.getData('hpBar') as Phaser.GameObjects.Graphics | undefined;
       hpBar?.destroy(); ghost.sprite.destroy();
       this.ghosts = this.ghosts.filter((g) => g !== ghost);
@@ -308,7 +374,7 @@ export class GameScene extends Phaser.Scene {
   private requestQuiz(): void {
     if (this.status !== 'playing' || this.quizModalOpen) return;
     if (!this.quizReady) {
-      this.game.events.emit('toast', `คำถามถัดไปจะมาใน ${Math.max(1, Math.ceil((30000 - this.quizElapsed) / 1000))} วินาที`);
+      this.game.events.emit('toast', `คำถามถัดไปจะมาใน ${Math.max(1, Math.ceil((GAME_SETTINGS.questionIntervalMs - this.quizElapsed) / 1000))} วินาที`);
       return;
     }
     this.quizModalOpen = true;
@@ -344,6 +410,7 @@ export class GameScene extends Phaser.Scene {
     for (const p of this.projectiles) p.circle.destroy();
     this.plants = []; this.ghosts = []; this.projectiles = [];
     this.stage = Math.max(1, Math.min(3, stage));
+    this.drawWorld();
     this.mana = this.gameSettings.startingMana; this.health = this.gameSettings.baseHealth; this.score = 0; this.kills = 0; this.spawned = 0; this.streak = 0;
     this.spawnElapsed = 0; this.waveBreakElapsed = 0; this.currentWaveIndex = 0; this.waveWaiting = false; this.status = 'playing'; this.selectedPlant = 'lotus';
     this.speedMultiplier = 1; this.simulationTime = 0; this.quizElapsed = 0; this.quizReady = false; this.quizModalOpen = false;

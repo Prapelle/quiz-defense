@@ -2,6 +2,26 @@ import { describe, expect, it } from 'vitest';
 import { GAME_SETTINGS, GHOSTS, PLANTS, STAGES } from './config';
 
 describe('game configuration', () => {
+  it('starts with 200 mana and grants 5 mana for each ghost defeated', () => {
+    expect(GAME_SETTINGS.startingMana).toBe(200);
+    expect(GAME_SETTINGS.killManaReward).toBe(5);
+  });
+
+  it('asks a quiz every 15 seconds of real time', () => {
+    expect(GAME_SETTINGS.questionIntervalMs).toBe(15000);
+  });
+
+  it('sets Kumarn to generate 10 mana every five seconds', () => {
+    const kumarn = PLANTS.find((plant) => plant.id === 'kumarn')!;
+    expect(kumarn.manaEveryMs).toBe(5000);
+    expect(kumarn.manaGain).toBe(10);
+    expect(kumarn.description).toContain('+10');
+  });
+
+  it('increases ghost attack damage by type', () => {
+    expect(GHOSTS.map((ghost) => ghost.damage)).toEqual([5, 9, 15]);
+  });
+
   it('contains five distinct player units with positive cost and health', () => {
     expect(PLANTS).toHaveLength(5);
     expect(new Set(PLANTS.map((plant) => plant.id)).size).toBe(5);
@@ -12,11 +32,27 @@ describe('game configuration', () => {
   });
 
   it('has the required mana, ranged, slowing, defensive and splash roles', () => {
-    expect(PLANTS.find((plant) => plant.id === 'kumarn')?.manaEveryMs).toBeGreaterThan(0);
+    const kumarn = PLANTS.find((plant) => plant.id === 'kumarn')!;
+    expect(kumarn.manaEveryMs).toBeGreaterThan(0);
+    expect(kumarn.manaGain).toBeGreaterThan(0);
     expect(PLANTS.find((plant) => plant.id === 'lotus')?.attackRange).toBeGreaterThan(0);
     expect(PLANTS.find((plant) => plant.id === 'bindLotus')?.slowMs).toBeGreaterThan(0);
     expect(PLANTS.find((plant) => plant.id === 'ward')?.hp).toBeGreaterThan(PLANTS.find((plant) => plant.id === 'lotus')!.hp);
     expect(PLANTS.find((plant) => plant.id === 'fireLotus')?.splashRadius).toBeGreaterThan(0);
+  });
+
+  it('keeps attack roles distinct and broadly comparable in sustained damage', () => {
+    const lotus = PLANTS.find((plant) => plant.id === 'lotus')!;
+    const bindLotus = PLANTS.find((plant) => plant.id === 'bindLotus')!;
+    const fireLotus = PLANTS.find((plant) => plant.id === 'fireLotus')!;
+    const dps = (plant: typeof lotus) => plant.attackDamage * 1000 / plant.attackMs;
+
+    expect(lotus.attackDamage).toBeGreaterThan(24);
+    expect(bindLotus.slowMs).toBeGreaterThan(bindLotus.attackMs);
+    expect(dps(bindLotus)).toBeLessThan(dps(lotus));
+    expect(fireLotus.splashRadius).toBeGreaterThan(0);
+    expect(dps(fireLotus)).toBeGreaterThan(dps(lotus) * 0.9);
+    expect(dps(fireLotus)).toBeLessThan(dps(lotus) * 1.2);
   });
 
   it('defines increasing wave difficulty across stages', () => {
