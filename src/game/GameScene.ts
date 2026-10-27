@@ -50,7 +50,7 @@ export class GameScene extends Phaser.Scene {
   private uiTexts = new Map<string, Phaser.GameObjects.Text>();
   private worldGraphics: Phaser.GameObjects.Graphics | null = null;
   private worldDecor: Phaser.GameObjects.GameObject[] = [];
-  private gameSettings: GameSettings = { rewardCorrect: GAME_SETTINGS.rewardCorrect, startingMana: GAME_SETTINGS.startingMana, baseHealth: GAME_SETTINGS.baseHealth, questionStreakBonus: GAME_SETTINGS.questionStreakBonus, questionStreakEvery: GAME_SETTINGS.questionStreakEvery, enemySpawnMs: GAME_SETTINGS.enemySpawnMs, maxEnemies: GAME_SETTINGS.maxEnemies, questionCooldownMs: GAME_SETTINGS.questionCooldownMs };
+  private gameSettings: GameSettings = { rewardCorrect: GAME_SETTINGS.rewardCorrect, startingMana: GAME_SETTINGS.startingMana, baseHealth: GAME_SETTINGS.baseHealth, questionStreakBonus: GAME_SETTINGS.questionStreakBonus, questionStreakEvery: GAME_SETTINGS.questionStreakEvery, enemySpawnMs: GAME_SETTINGS.enemySpawnMs, maxEnemies: GAME_SETTINGS.maxEnemies, questionCooldownMs: GAME_SETTINGS.questionCooldownMs, soundMuted: false, musicVolume: 0.45, sfxVolume: 0.8 };
 
   constructor() { super('GameScene'); }
 
@@ -111,6 +111,7 @@ export class GameScene extends Phaser.Scene {
         this.waveWaiting = false;
         this.currentWaveIndex += 1;
         this.spawnElapsed = 0;
+        this.sfx('wave');
         this.game.events.emit('toast', `Wave ${this.currentWaveIndex + 1} กำลังมา!`);
       }
     } else if (!waveComplete && !this.waveWaiting) {
@@ -273,6 +274,7 @@ export class GameScene extends Phaser.Scene {
     sprite.setData('hpBar', hpBar);
     if (!config.fuseMs) this.tweens.add({ targets: sprite, angle: { from: -2, to: 2 }, duration: 720, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
     this.plants.push({ config, row, col, x: px, y: py, hp: config.hp, sprite, lastAction: this.simulationTime, charmedUntil: 0, explodeAt: config.fuseMs ? this.simulationTime + config.fuseMs : undefined });
+    this.sfx('place');
     if (config.fuseMs) this.game.events.emit('toast', `วางระเบิดอาคมแล้ว! จะระเบิดใน ${Math.round(config.fuseMs / 1000)} วินาที`);
     this.pushStats();
   }
@@ -300,6 +302,8 @@ export class GameScene extends Phaser.Scene {
       if (Math.abs(ghost.row - bomb.row) <= reach && Math.abs(ghostCol - bomb.col) <= reach) this.damageGhost(ghost, bomb.config.attackDamage);
     }
     this.removePlant(bomb);
+    this.sfx('bomb');
+    this.cameras.main.shake(180, 0.004);
     this.game.events.emit('toast', 'ระเบิดอาคมทำงานแล้ว!');
   }
 
@@ -326,6 +330,7 @@ export class GameScene extends Phaser.Scene {
     this.tweens.add({ targets: sprite, angle: { from: -3, to: 3 }, duration: 520 + Math.round(Math.random() * 260), yoyo: true, repeat: -1, ease: 'Sine.inOut' });
     const now = this.simulationTime;
     this.ghosts.push({ config, row, x, y, hp: config.hp, sprite, baseScaleX: sprite.scaleX, baseScaleY: sprite.scaleY, slowUntil: 0, lastAttack: 0, nextAbilityAt: now + this.firstAbilityDelay(config), abilityUntil: 0, vanishUsed: false });
+    this.sfx('ghost-spawn');
     this.spawned += 1;
     this.pushStats();
   }
@@ -341,6 +346,7 @@ export class GameScene extends Phaser.Scene {
     const config: GhostConfig = { id: 'pret', name: boss.name, emoji: boss.emoji, hp: boss.hp, speed: boss.speed, damage: boss.damage, reward: boss.reward, description: boss.description, size: 58 };
     this.ghosts.push({ config, row, x, y, hp: boss.hp, sprite, baseScaleX: sprite.scaleX, baseScaleY: sprite.scaleY, slowUntil: 0, lastAttack: 0, boss, bossAbilityElapsed: 0, tigerForm: false, nextAbilityAt: Number.POSITIVE_INFINITY, abilityUntil: 0, vanishUsed: false });
     this.spawned += 1;
+    this.sfx('boss');
     this.game.events.emit('toast', `⚠ บอสปรากฏตัว: ${boss.name}!`);
     this.cameras.main.shake(350, 0.006);
     this.pushStats();
@@ -380,6 +386,7 @@ export class GameScene extends Phaser.Scene {
     if (!target) return;
     plant.lastAction = now;
     const circle = this.add.circle(plant.x + 22, plant.y - 7, 6, afraid ? 0xb7a9d6 : 0x9aebff).setStrokeStyle(2, 0xe7fcff).setDepth(8);
+    this.sfx('shoot');
     this.projectiles.push({ circle, x: plant.x + 22, y: plant.y - 7, target, speed: 420, damage: plant.config.attackDamage, splash: plant.config.splashRadius ?? 0, slowMs: plant.config.slowMs });
   }
 
@@ -480,6 +487,7 @@ export class GameScene extends Phaser.Scene {
         this.health = Math.max(0, this.health);
         this.destroyGhostSprite(ghost);
         this.ghosts = this.ghosts.filter((g) => g !== ghost);
+        this.sfx('base-hit');
         this.game.events.emit('toast', `ผีผ่านฐาน! พลังชีวิตเหลือ ${this.health}`);
         this.pushStats();
         return;
@@ -588,6 +596,7 @@ export class GameScene extends Phaser.Scene {
       this.mana += GAME_SETTINGS.killManaReward;
       this.game.events.emit('toast', `กำจัดผีได้ +${GAME_SETTINGS.killManaReward} พลังอาคม`);
       this.ghosts = this.ghosts.filter((g) => g !== ghost);
+      this.sfx('ghost-die');
       this.destroyGhostSprite(ghost, true);
       this.pushStats();
     }
@@ -600,6 +609,11 @@ export class GameScene extends Phaser.Scene {
     if (!dying) { ghost.sprite.destroy(); return; }
     this.tweens.killTweensOf(ghost.sprite);
     this.tweens.add({ targets: ghost.sprite, alpha: 0, y: ghost.y + 14, scaleX: ghost.baseScaleX * 0.7, scaleY: ghost.baseScaleY * 0.7, duration: 320, onComplete: () => ghost.sprite.destroy() });
+  }
+
+  /** Sound effects are played by the React app so muting and volume live in one place. */
+  private sfx(name: string): void {
+    this.game.events.emit('sfx', name);
   }
 
   private requestQuiz(): void {

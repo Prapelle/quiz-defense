@@ -85,7 +85,7 @@ option { color: #f4f7fc; background: #101c31; }
 .page-heading { display: flex; align-items: center; justify-content: space-between; gap: 20px; margin-bottom: 24px; }
 .page-heading h1, .battle-header h1 { color: #fff1cc; margin: 0 0 7px; font-size: clamp(24px, 2.5vw, 34px); letter-spacing: -.025em; }
 .page-heading p:not(.eyebrow) { color: #a9b9d0; margin: 0; font-size: 13px; line-height: 1.7; }
-.stage-page, .manager-page, .settings-page, .backup-page { width: min(1380px, 100%); margin: 0 auto; padding: 35px clamp(16px, 3vw, 42px) 44px; flex: 1; }
+.stage-page, .manager-page, .settings-page, .backup-page, .achievements-page { width: min(1380px, 100%); margin: 0 auto; padding: 35px clamp(16px, 3vw, 42px) 44px; flex: 1; }
 .score-chip { display: flex; align-items: center; gap: 8px; background: #162944; border: 1px solid #e6c16d45; border-radius: 12px; color: #c5d4e9; padding: 12px 15px; font-size: 12px; white-space: nowrap; }
 .score-chip strong { color: var(--gold); font-size: 18px; }
 .stage-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 17px; }
@@ -219,7 +219,8 @@ option { color: #f4f7fc; background: #101c31; }
 .create-set-row input { font-size: 12px; }
 .create-set-row .button { white-space: nowrap; }
 .count-pill { padding: 3px 7px; border-radius: 6px; background: #1c4260; color: #8fdfff; margin-left: 4px; font-size: 10px; }
-.filter-row { display: grid; grid-template-columns: minmax(0, 1fr) 135px 115px; gap: 7px; margin: 13px 0; }
+.filter-row { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 7px; margin: 13px 0; }
+.filter-row input { grid-column: 1 / -1; }
 .filter-row input, .filter-row select { font-size: 11px; padding: 9px; }
 .question-list { display: flex; flex-direction: column; max-height: 650px; overflow-y: auto; scrollbar-width: thin; scrollbar-color: #3c5a7a transparent; }
 .question-row { display: grid; grid-template-columns: 25px minmax(0, 1fr) auto; gap: 9px; padding: 13px 0; border-top: 1px solid #adc5e21d; align-items: start; }
@@ -305,7 +306,7 @@ option { color: #f4f7fc; background: #101c31; }
   .hero-kumarn { font-size: 108px; left: 19%; }
   .home-bottom { gap: 8px; font-size: 8px; flex-wrap: wrap; }
   .home-bottom i { height: 13px; }
-  .stage-page, .manager-page, .settings-page, .backup-page { padding: 22px 13px 30px; }
+  .stage-page, .manager-page, .settings-page, .backup-page, .achievements-page { padding: 22px 13px 30px; }
   .stage-grid, .backup-grid, .settings-grid, .manager-grid { grid-template-columns: 1fr; }
   .stage-card { display: grid; grid-template-columns: minmax(115px, .8fr) 1.2fr; }
   .stage-visual { height: auto; min-height: 190px; border-bottom: 0; border-right: 1px solid #b5cdeb1c; }
@@ -320,6 +321,7 @@ option { color: #f4f7fc; background: #101c31; }
   .heading-actions { width: 100%; }
   .heading-actions .button { flex: 1; }
   .filter-row { grid-template-columns: 1fr 1fr; }
+  .filter-row input { grid-column: 1 / -1; }
   .filter-row input { grid-column: 1 / -1; }
   .editor-panel, .list-panel { padding: 14px; }
   .backup-card { padding: 18px; }
@@ -651,3 +653,38 @@ option { color: #f4f7fc; background: #101c31; }
 .ghost-portrait { background-color: transparent; }
 .ghost-ability { display: inline-block; margin-right: 6px; padding: 1px 7px; border-radius: 999px; background: rgba(255, 207, 107, .16); color: #ffd98a; font-size: .72rem; font-weight: 700; }
 .plant-portrait.plant-emoji { display: grid; place-items: center; font-size: 34px; line-height: 1; background: none; }
+
+/* Achievements page */
+.achievements-page { display: grid; gap: 18px; align-content: start; }
+.achievements-page .panel { padding: 18px 20px; }
+.achievement-summary { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+.achievement-summary div { background: rgba(14, 26, 52, .85); border: 1px solid rgba(232, 191, 103, .25); border-radius: 16px; padding: 16px; text-align: center; }
+.achievement-summary strong { display: block; font-size: 1.7rem; color: #ffd98a; }
+.achievement-summary span { color: #b9c7de; font-size: .85rem; }
+.achievement-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr); gap: 18px; }
+.achievements-page h2 { margin: 0 0 12px; font-size: 1.05rem; }
+.subject-row { display: grid; grid-template-columns: 150px minmax(0, 1fr) 110px; align-items: center; gap: 10px; padding: 7px 0; font-size: .9rem; }
+.subject-row em { font-style: normal; color: #b9c7de; text-align: right; font-size: .8rem; }
+.subject-row.weak span { color: #ffb08a; }
+.best-table { width: 100%; border-collapse: collapse; font-size: .88rem; }
+.best-table th, .best-table td { padding: 7px 6px; text-align: center; border-bottom: 1px solid rgba(255, 255, 255, .07); }
+.best-table th { color: #9fb2d4; font-weight: 600; }
+.best-table td:nth-child(2) { color: #ffd166; letter-spacing: 1px; }
+.best-table tr.unplayed td { color: #6d7c97; }
+.badge-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 12px; }
+.badge { display: grid; gap: 4px; justify-items: center; text-align: center; padding: 14px 10px; border-radius: 16px; border: 1px solid rgba(255, 255, 255, .08); background: rgba(10, 20, 40, .7); }
+.badge.owned { border-color: rgba(255, 207, 107, .55); background: linear-gradient(160deg, rgba(80, 56, 18, .55), rgba(14, 26, 52, .9)); }
+.badge.locked { opacity: .55; }
+.badge-icon { font-size: 2rem; }
+.badge small { color: #b9c7de; font-size: .76rem; }
+.result-achievements { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin: 10px 0; }
+.result-achievements strong { width: 100%; color: #ffd98a; }
+.result-achievements span { padding: 4px 10px; border-radius: 999px; background: rgba(255, 207, 107, .16); }
+@media (max-width: 900px) { .achievement-summary { grid-template-columns: repeat(2, 1fr); } .achievement-grid { grid-template-columns: 1fr; } }
+
+/* Sound toggle */
+.sound-toggle { position: absolute; right: -52px; top: 50%; transform: translateY(-50%); min-width: 40px; min-height: 40px; border-radius: 12px; border: 1px solid rgba(232, 191, 103, .35); background: rgba(14, 26, 52, .85); font-size: 18px; cursor: pointer; }
+.setting-row input[type="range"] { width: 160px; accent-color: #e8bf67; }
+.setting-row input[type="checkbox"] { width: 22px; height: 22px; accent-color: #e8bf67; }
+
+.top-status { position: relative; margin-right: 52px; }
