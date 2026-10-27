@@ -20,6 +20,26 @@ export interface PlantConfig {
   splashRadius?: number;
 }
 
+export type BossAbility = 'waterSurge' | 'tigerShift';
+
+export interface BossConfig {
+  stage: number;
+  name: string;
+  emoji: string;
+  hp: number;
+  speed: number;
+  damage: number;
+  reward: number;
+  description: string;
+  ability: BossAbility;
+}
+
+export const BOSSES: BossConfig[] = [
+  { stage: 3, name: 'นางรำเฝ้าประตู', emoji: '💃', hp: 720, speed: 7, damage: 18, reward: 120, description: 'บอสประจำด่าน 3 — ร่ายรำหลอกล่อและเคลื่อนที่ช้าแต่ทนทาน', ability: 'waterSurge' },
+  { stage: 6, name: 'ผีพรายเจ้าแม่น้ำ', emoji: '🌊', hp: 1250, speed: 6, damage: 24, reward: 220, description: 'โจมตีน้ำเป็นระลอก สร้างความเสียหายแก่ผู้พิทักษ์ทั่วทั้งแผนที่', ability: 'waterSurge' },
+  { stage: 9, name: 'ผีสมิง', emoji: '🐅', hp: 2200, speed: 8, damage: 30, reward: 500, description: 'สลับร่างคนกับร่างเสือ และเรียกเสือบริวารเข้าช่วยรบ', ability: 'tigerShift' },
+];
+
 export interface GhostConfig {
   id: GhostId;
   name: string;

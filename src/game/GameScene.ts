@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { GAME_SETTINGS, GHOSTS, PLANTS, STAGES, type GhostConfig, type PlantConfig, type PlantId, type GhostId } from './config';
+import { GAME_SETTINGS, GHOSTS, BOSSES, PLANTS, STAGES, type GhostConfig, type PlantConfig, type PlantId, type GhostId, type BossConfig } from './config';
 import { CHARACTER_ATLAS_DATA_URL, CHARACTER_FRAME_SIZE, CHARACTER_FRAMES } from '../data/characterAtlas';
 import { resolvePlantUnlocks, resolveQuizAnswer } from './rules';
 import type { GameSettings } from '../types';
@@ -20,7 +20,7 @@ export interface GameStats {
   status: 'playing' | 'won' | 'lost';
 }
 interface PlantUnit { config: PlantConfig; row: number; col: number; x: number; y: number; hp: number; sprite: Phaser.GameObjects.Image | Phaser.GameObjects.Text; lastAction: number; poisonDamage: number; poisonUntil: number; poisonIntervalMs: number; nextPoisonTick: number; }
-interface GhostUnit { config: GhostConfig; row: number; x: number; y: number; hp: number; sprite: Phaser.GameObjects.Image | Phaser.GameObjects.Text; baseScaleX: number; baseScaleY: number; slowUntil: number; lastAttack: number; }
+interface GhostUnit { config: GhostConfig; row: number; x: number; y: number; hp: number; sprite: Phaser.GameObjects.Image | Phaser.GameObjects.Text; baseScaleX: number; baseScaleY: number; slowUntil: number; lastAttack: number; boss?: BossConfig; bossAbilityElapsed?: number; tigerForm?: boolean; }
 interface Projectile { circle: Phaser.GameObjects.Arc; x: number; y: number; target: GhostUnit; speed: number; damage: number; splash: number; slowMs?: number; }
 
 export class GameScene extends Phaser.Scene {
@@ -114,7 +114,8 @@ export class GameScene extends Phaser.Scene {
       const spawnInterval = Math.max(2200, Math.round(this.gameSettings.enemySpawnMs * stageConfig.spawnMs / GAME_SETTINGS.enemySpawnMs));
       if (this.spawned < targetEnemies && this.spawnElapsed >= spawnInterval) {
         this.spawnElapsed = 0;
-        this.spawnGhost(stageConfig.allowedGhosts[this.spawned % stageConfig.allowedGhosts.length]);
+        if (this.spawned === targetEnemies - 1 && BOSSES.some((boss) => boss.stage === this.stage)) this.spawnBoss(BOSSES.find((boss) => boss.stage === this.stage)!);
+        else this.spawnGhost(stageConfig.allowedGhosts[this.spawned % stageConfig.allowedGhosts.length]);
       }
     }
     const now = this.simulationTime;
@@ -285,6 +286,21 @@ export class GameScene extends Phaser.Scene {
     this.pushStats();
   }
 
+  private spawnBoss(boss: BossConfig): void {
+    const row = Math.floor(Math.random() * GAME_SETTINGS.gridRows);
+    const x = 1150;
+    const y = 154 + row * 83;
+    const sprite = this.add.text(x, y, boss.emoji, { fontFamily: 'Apple Color Emoji, Segoe UI Emoji, sans-serif', fontSize: '58px', stroke: '#ffdf8a', strokeThickness: 5 }).setOrigin(0.5).setDepth(10);
+    sprite.setData('hpBar', this.add.graphics().setDepth(11));
+    sprite.setData('bossName', this.add.text(x, y - 49, boss.name, { fontFamily: 'Tahoma, Arial, sans-serif', fontSize: '15px', color: '#ffe7a3', fontStyle: 'bold', stroke: '#20132c', strokeThickness: 4 }).setOrigin(0.5).setDepth(12));
+    const config: GhostConfig = { id: 'pret', name: boss.name, emoji: boss.emoji, hp: boss.hp, speed: boss.speed, damage: boss.damage, reward: boss.reward, description: boss.description, size: 58 };
+    this.ghosts.push({ config, row, x, y, hp: boss.hp, sprite, baseScaleX: sprite.scaleX, baseScaleY: sprite.scaleY, slowUntil: 0, lastAttack: 0, boss, bossAbilityElapsed: 0, tigerForm: false });
+    this.spawned += 1;
+    this.game.events.emit('toast', `⚠ บอสปรากฏตัว: ${boss.name}!`);
+    this.cameras.main.shake(350, 0.006);
+    this.pushStats();
+  }
+
   private updatePlant(plant: PlantUnit, now: number): void {
     if (plant.poisonUntil > now && plant.poisonDamage > 0 && now >= plant.nextPoisonTick) {
       plant.nextPoisonTick = now + plant.poisonIntervalMs;
@@ -318,6 +334,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   private updateGhost(ghost: GhostUnit, now: number, delta: number): void {
+    if (ghost.boss) this.updateBossAbility(ghost, delta);
     const hpRatio = ghost.hp / ghost.config.hp;
     const enraged = Boolean(ghost.config.enrageBelowHpRatio && hpRatio <= ghost.config.enrageBelowHpRatio);
     const damageMultiplier = enraged ? ghost.config.enrageDamageMultiplier ?? 1 : 1;
@@ -352,7 +369,9 @@ export class GameScene extends Phaser.Scene {
         this.health -= Math.max(1, Math.round(ghost.config.damage * damageMultiplier));
         this.health = Math.max(0, this.health);
         const hpBar = ghost.sprite.getData('hpBar') as Phaser.GameObjects.Graphics | undefined;
-        hpBar?.destroy(); ghost.sprite.destroy();
+        hpBar?.destroy();
+        (ghost.sprite.getData('bossName') as Phaser.GameObjects.Text | undefined)?.destroy();
+        ghost.sprite.destroy();
         this.ghosts = this.ghosts.filter((g) => g !== ghost);
         this.game.events.emit('toast', `ผีผ่านฐาน! พลังชีวิตเหลือ ${this.health}`);
         this.pushStats();
@@ -360,7 +379,20 @@ export class GameScene extends Phaser.Scene {
       }
     }
     const hpBar = ghost.sprite.getData('hpBar') as Phaser.GameObjects.Graphics | undefined;
-    if (hpBar) { hpBar.clear(); hpBar.fillStyle(0x2a2030).fillRoundedRect(ghost.x - 20, ghost.y - 27, 40, 5, 2); hpBar.fillStyle(0xf27683).fillRoundedRect(ghost.x - 20, ghost.y - 27, 40 * Math.max(0, ghost.hp) / ghost.config.hp, 5, 2); }
+    if (hpBar) { const width = ghost.boss ? 110 : 40; const height = ghost.boss ? 9 : 5; const barY = ghost.y - (ghost.boss ? 42 : 27); hpBar.clear(); hpBar.fillStyle(0x2a2030).fillRoundedRect(ghost.x - width / 2, barY, width, height, 3); hpBar.fillStyle(ghost.boss ? 0xffbd55 : 0xf27683).fillRoundedRect(ghost.x - width / 2, barY, width * Math.max(0, ghost.hp) / ghost.config.hp, height, 3); }
+    (ghost.sprite.getData('bossName') as Phaser.GameObjects.Text | undefined)?.setPosition(ghost.x, ghost.y - 59);
+  }
+
+  private updateBossAbility(ghost: GhostUnit, delta: number): void {
+    ghost.bossAbilityElapsed = (ghost.bossAbilityElapsed ?? 0) + delta;
+    if (ghost.boss?.ability === 'waterSurge' && ghost.bossAbilityElapsed >= 3200) {
+      ghost.bossAbilityElapsed = 0;
+      const pulse = this.add.circle(640, 330, 30, 0x45c9ff, 0.18).setStrokeStyle(5, 0x8ce8ff, 0.85).setDepth(15);
+      this.tweens.add({ targets: pulse, scaleX: 19, scaleY: 8, alpha: 0, duration: 650, onComplete: () => pulse.destroy() });
+      for (const plant of [...this.plants]) this.damagePlant(plant, ghost.boss.stage === 6 ? 14 : 7);
+      this.game.events.emit('toast', ghost.boss.stage === 6 ? '🌊 ผีพรายปล่อยคลื่นน้ำโจมตีผู้พิทักษ์ทั่วแผนที่!' : '💃 นางรำปล่อยคลื่นอาคมทั่วสนาม!');
+    }
+
   }
 
   private damagePlant(plant: PlantUnit, damage: number): void {
@@ -402,6 +434,27 @@ export class GameScene extends Phaser.Scene {
     const reduction = Math.min(0.8, Math.max(0, ghost.config.damageReduction ?? 0));
     ghost.hp -= Math.max(1, Math.round(damage * (1 - reduction)));
     ghost.sprite.setScale(ghost.baseScaleX * 1.12, ghost.baseScaleY * 1.12); this.time.delayedCall(80, () => { if (ghost.sprite.active) ghost.sprite.setScale(ghost.baseScaleX, ghost.baseScaleY); });
+    if (ghost.hp <= 0 && ghost.boss?.ability === 'tigerShift' && !ghost.tigerForm) {
+      ghost.tigerForm = true;
+      ghost.hp = Math.round((ghost.boss.hp || 2200) * 0.75);
+      ghost.config.hp = ghost.hp;
+      ghost.config.speed = 18;
+      ghost.config.damage = 42;
+      const tigerSprite = ghost.sprite as Phaser.GameObjects.Text;
+      tigerSprite.setText('🐅');
+      tigerSprite.setFontSize('68px');
+      this.cameras.main.shake(500, 0.009);
+      this.game.events.emit('toast', '🐅 ผีสมิงฟื้นคืนชีพเป็นร่างเสือ! กำจัดร่างเสือเพื่อชนะบอส');
+      for (let i = 0; i < 2; i += 1) {
+        const row = (ghost.row + i + 1) % GAME_SETTINGS.gridRows;
+        const x = Math.min(1125, ghost.x + 35 + i * 24);
+        const y = 154 + row * 83;
+        const minionSprite = this.add.text(x, y, '🐅', { fontFamily: 'Apple Color Emoji, Segoe UI Emoji, sans-serif', fontSize: '30px', stroke: '#38251b', strokeThickness: 3 }).setOrigin(0.5).setDepth(6);
+        const minionConfig: GhostConfig = { id: 'kongkoi', name: 'เสือบริวาร', emoji: '🐅', hp: 95, speed: 23, damage: 9, reward: 0, description: 'เสือบริวารที่ผีสมิงเรียกมา', size: 30 };
+        this.ghosts.push({ config: minionConfig, row, x, y, hp: minionConfig.hp, sprite: minionSprite, baseScaleX: minionSprite.scaleX, baseScaleY: minionSprite.scaleY, slowUntil: 0, lastAttack: 0 });
+      }
+      return;
+    }
     if (ghost.hp <= 0) {
       if (ghost.config.deathBurstDamage && ghost.config.deathBurstRadius) {
         const radius = ghost.config.deathBurstRadius;
@@ -456,7 +509,7 @@ export class GameScene extends Phaser.Scene {
 
   private resetGame(stage: number): void {
     for (const p of this.plants) { const ring = p.sprite.getData('ring') as Phaser.GameObjects.Graphics | undefined; const hpBar = p.sprite.getData('hpBar') as Phaser.GameObjects.Graphics | undefined; ring?.destroy(); hpBar?.destroy(); p.sprite.destroy(); }
-    for (const g of this.ghosts) { g.sprite.destroy(); (g.sprite.getData('hpBar') as Phaser.GameObjects.Graphics | undefined)?.destroy(); }
+    for (const g of this.ghosts) { g.sprite.destroy(); (g.sprite.getData('hpBar') as Phaser.GameObjects.Graphics | undefined)?.destroy(); (g.sprite.getData('bossName') as Phaser.GameObjects.Text | undefined)?.destroy(); }
     for (const p of this.projectiles) p.circle.destroy();
     this.plants = []; this.ghosts = []; this.projectiles = [];
     this.stage = Math.max(1, Math.min(STAGES.length, Math.floor(stage)));
