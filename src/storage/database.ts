@@ -84,9 +84,19 @@ function mergeSave(input: Partial<GameSave>): GameSave {
     questions: Array.isArray(input.questions) ? input.questions : fresh.questions,
     sets: Array.isArray(input.sets) ? input.sets : fresh.sets,
     progress: { ...fresh.progress, ...(input.progress ?? {}) },
-    settings: { ...fresh.settings, ...(input.settings ?? {}) },
+    settings: migrateSettings({ ...fresh.settings, ...(input.settings ?? {}) }),
     activeSetId: typeof input.activeSetId === 'string' ? input.activeSetId : fresh.activeSetId,
   };
+}
+
+/** Saves from v0.1.0 stored the old 900 ms quiz cooldown, which never limited quiz spamming. */
+const LEGACY_QUESTION_COOLDOWN_MS = 900;
+function migrateSettings(settings: GameSettings): GameSettings {
+  return settings.questionCooldownMs === LEGACY_QUESTION_COOLDOWN_MS ? { ...settings, questionCooldownMs: GAME_SETTINGS.questionCooldownMs } : settings;
+}
+
+export function normalizeSave(input: Partial<GameSave>): GameSave {
+  return mergeSave(input);
 }
 
 export interface QuestionPackage {

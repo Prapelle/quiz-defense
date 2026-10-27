@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  importQuestionPackage, packageQuestions, resetProgress, validateQuestionPackage,
+  importQuestionPackage, normalizeSave, packageQuestions, resetProgress, validateQuestionPackage,
 } from './database';
 import type { GameSave, QuestionSet, QuizQuestion } from '../types';
 import { DEFAULT_QUESTIONS, DEFAULT_SETS, DEFAULT_SET_ID } from '../data/defaultQuestions';
@@ -89,5 +89,22 @@ describe('resetProgress', () => {
     const reset = resetProgress(current);
     expect(reset).toEqual({ score: 0, unlockedStage: 1, starsByStage: {}, gamesPlayed: 0, correctAnswers: 0, answeredQuestions: 0 });
     expect(current.score).toBe(120);
+  });
+});
+
+describe('save normalization', () => {
+  it('fills missing settings from defaults when restoring an older backup', () => {
+    const partial = { ...saveFixture(), settings: { rewardCorrect: 40 } } as unknown as GameSave;
+    const restored = normalizeSave(partial);
+    expect(restored.settings.rewardCorrect).toBe(40);
+    expect(restored.settings.baseHealth).toBe(GAME_SETTINGS.baseHealth);
+    expect(restored.settings.questionCooldownMs).toBe(GAME_SETTINGS.questionCooldownMs);
+  });
+
+  it('migrates the legacy 900 ms quiz cooldown but keeps a teacher-chosen value', () => {
+    const legacy = saveFixture(); legacy.settings.questionCooldownMs = 900;
+    expect(normalizeSave(legacy).settings.questionCooldownMs).toBe(GAME_SETTINGS.questionCooldownMs);
+    const custom = saveFixture(); custom.settings.questionCooldownMs = 0;
+    expect(normalizeSave(custom).settings.questionCooldownMs).toBe(0);
   });
 });

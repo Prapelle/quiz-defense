@@ -40,7 +40,7 @@ export const GAME_SETTINGS = {
   questionStreakEvery: 3,
   enemySpawnMs: 5200,
   maxEnemies: 14,
-  questionCooldownMs: 900,
+  questionCooldownMs: 8000,
   gridRows: 5,
   gridCols: 9,
   canvasWidth: 1280,
