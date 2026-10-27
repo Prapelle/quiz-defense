@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { resolvePlantUnlocks, resolveQuizAnswer, resolveWaveProgress, targetEnemiesForStage } from './rules';
+import { baseDamageForLeak, isGhostUntargetable, resolvePlantUnlocks, resolveQuizAnswer, resolveWaveProgress, smokeDamage, starsForResult, targetEnemiesForStage } from './rules';
 
 describe('resolveQuizAnswer', () => {
   it('awards energy and points for a correct answer', () => {
@@ -75,5 +75,34 @@ describe('resolveWaveProgress', () => {
 
   it('does not mark the final wave as waiting for another wave', () => {
     expect(resolveWaveProgress([2, 2], 4, true).waitingForNextWave).toBe(false);
+  });
+});
+
+describe('ghost ability rules', () => {
+  it('hides camouflaged and vanished ghosts only while the ability is active', () => {
+    expect(isGhostUntargetable('camouflage', 2000, 1500)).toBe(true);
+    expect(isGhostUntargetable('vanish', 2000, 2500)).toBe(false);
+    expect(isGhostUntargetable('smoke', 2000, 1500)).toBe(false);
+    expect(isGhostUntargetable(undefined, 2000, 1500)).toBe(false);
+  });
+
+  it('reduces damage by 60% in smoke form but never below 1', () => {
+    expect(smokeDamage(50, true)).toBe(20);
+    expect(smokeDamage(50, false)).toBe(50);
+    expect(smokeDamage(1, true)).toBe(1);
+  });
+
+  it('costs one base life per ghost and two per boss', () => {
+    expect(baseDamageForLeak(false)).toBe(1);
+    expect(baseDamageForLeak(true)).toBe(2);
+  });
+
+  it('awards stars from the share of base health left', () => {
+    expect(starsForResult(true, 5, 5)).toBe(3);
+    expect(starsForResult(true, 4, 5)).toBe(3);
+    expect(starsForResult(true, 2, 5)).toBe(2);
+    expect(starsForResult(true, 1, 5)).toBe(1);
+    expect(starsForResult(true, 8, 10)).toBe(3);
+    expect(starsForResult(false, 5, 5)).toBe(0);
   });
 });

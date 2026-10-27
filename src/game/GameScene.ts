@@ -1,8 +1,8 @@
 import Phaser from 'phaser';
-import { GAME_SETTINGS, GHOSTS, BOSSES, PLANTS, STAGES, type GhostConfig, type PlantConfig, type PlantId, type GhostId, type BossConfig } from './config';
+import { GAME_SETTINGS, GHOST_ABILITY, GHOSTS, BOSSES, PLANTS, STAGES, type GhostConfig, type PlantConfig, type PlantId, type GhostId, type BossConfig } from './config';
 import { CHARACTER_ATLAS_DATA_URL, CHARACTER_FRAME_SIZE, CHARACTER_FRAMES } from '../data/characterAtlas';
-import { GHOST_ATLAS_DATA_URL, GHOST_FRAME_SIZE, GHOST_FRAMES } from '../data/ghostAtlas';
-import { resolvePlantUnlocks, resolveQuizAnswer } from './rules';
+import { BOSS_ART, bossArtUrl, bossTextureKey, ghostArtUrl, ghostTextureKey } from '../data/ghostArt';
+import { baseDamageForLeak, isGhostUntargetable, resolvePlantUnlocks, resolveQuizAnswer, smokeDamage } from './rules';
 import type { GameSettings } from '../types';
 
 export interface GameStats {
@@ -20,8 +20,8 @@ export interface GameStats {
   stageName: string;
   status: 'playing' | 'won' | 'lost';
 }
-interface PlantUnit { config: PlantConfig; row: number; col: number; x: number; y: number; hp: number; sprite: Phaser.GameObjects.Image | Phaser.GameObjects.Text; lastAction: number; poisonDamage: number; poisonUntil: number; poisonIntervalMs: number; nextPoisonTick: number; }
-interface GhostUnit { config: GhostConfig; row: number; x: number; y: number; hp: number; sprite: Phaser.GameObjects.Image | Phaser.GameObjects.Text; baseScaleX: number; baseScaleY: number; slowUntil: number; lastAttack: number; boss?: BossConfig; bossAbilityElapsed?: number; tigerForm?: boolean; }
+interface PlantUnit { config: PlantConfig; row: number; col: number; x: number; y: number; hp: number; sprite: Phaser.GameObjects.Image | Phaser.GameObjects.Text | Phaser.GameObjects.Graphics; lastAction: number; charmedUntil: number; explodeAt?: number; }
+interface GhostUnit { config: GhostConfig; row: number; x: number; y: number; hp: number; sprite: Phaser.GameObjects.Image | Phaser.GameObjects.Text; baseScaleX: number; baseScaleY: number; slowUntil: number; lastAttack: number; boss?: BossConfig; bossAbilityElapsed?: number; tigerForm?: boolean; nextAbilityAt: number; abilityUntil: number; vanishUsed: boolean; }
 interface Projectile { circle: Phaser.GameObjects.Arc; x: number; y: number; target: GhostUnit; speed: number; damage: number; splash: number; slowMs?: number; }
 
 export class GameScene extends Phaser.Scene {
@@ -60,10 +60,8 @@ export class GameScene extends Phaser.Scene {
       frameWidth: CHARACTER_FRAME_SIZE,
       frameHeight: CHARACTER_FRAME_SIZE,
     });
-    this.load.spritesheet('ghost-atlas', GHOST_ATLAS_DATA_URL, {
-      frameWidth: GHOST_FRAME_SIZE,
-      frameHeight: GHOST_FRAME_SIZE,
-    });
+    for (const ghost of GHOSTS) this.load.image(ghostTextureKey(ghost.id), ghostArtUrl(ghost.id));
+    for (const art of BOSS_ART) this.load.image(bossTextureKey(art), bossArtUrl(art));
   }
 
   create(): void {
@@ -263,17 +261,59 @@ export class GameScene extends Phaser.Scene {
     const py = 154 + row * 83;
     const hasPlantFrame = Object.prototype.hasOwnProperty.call(CHARACTER_FRAMES, config.id);
     const plantFrame = hasPlantFrame ? CHARACTER_FRAMES[config.id] : 0;
-    const sprite: Phaser.GameObjects.Image | Phaser.GameObjects.Text = this.textures.exists('character-atlas') && hasPlantFrame
-      ? this.add.image(px, py, 'character-atlas', plantFrame).setDisplaySize(config.id === 'ward' ? 60 : 56, 56).setDepth(5)
-      : this.add.text(px, py, config.emoji, { fontFamily: 'Apple Color Emoji, Segoe UI Emoji, sans-serif', fontSize: config.id === 'ward' ? '48px' : '42px', stroke: '#112236', strokeThickness: 2 }).setOrigin(0.5).setDepth(5);
+    const sprite: Phaser.GameObjects.Image | Phaser.GameObjects.Text | Phaser.GameObjects.Graphics = config.fuseMs
+      ? this.drawBombPot(px, py)
+      : this.textures.exists('character-atlas') && hasPlantFrame
+        ? this.add.image(px, py, 'character-atlas', plantFrame).setDisplaySize(config.id === 'ward' ? 60 : 56, 56).setDepth(5)
+        : this.add.text(px, py, config.emoji, { fontFamily: 'Apple Color Emoji, Segoe UI Emoji, sans-serif', fontSize: config.id === 'ward' ? '48px' : '42px', stroke: '#112236', strokeThickness: 2 }).setOrigin(0.5).setDepth(5);
     const ring = this.add.graphics().lineStyle(2, 0xf9d983, 0.7).strokeCircle(px, py + 6, 29).setDepth(4);
     const hpBar = this.add.graphics().setDepth(7);
     // Keep the placement ring and HP bar attached to the protector sprite.
     sprite.setData('ring', ring);
     sprite.setData('hpBar', hpBar);
-    this.tweens.add({ targets: sprite, angle: { from: -2, to: 2 }, duration: 720, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
-    this.plants.push({ config, row, col, x: px, y: py, hp: config.hp, sprite, lastAction: this.simulationTime, poisonDamage: 0, poisonUntil: 0, poisonIntervalMs: 1000, nextPoisonTick: 0 });
+    if (!config.fuseMs) this.tweens.add({ targets: sprite, angle: { from: -2, to: 2 }, duration: 720, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
+    this.plants.push({ config, row, col, x: px, y: py, hp: config.hp, sprite, lastAction: this.simulationTime, charmedUntil: 0, explodeAt: config.fuseMs ? this.simulationTime + config.fuseMs : undefined });
+    if (config.fuseMs) this.game.events.emit('toast', `วางระเบิดอาคมแล้ว! จะระเบิดใน ${Math.round(config.fuseMs / 1000)} วินาที`);
     this.pushStats();
+  }
+
+  /** Earthen pot bomb with a tied red cloth, drawn locally so it works offline. */
+  private drawBombPot(px: number, py: number): Phaser.GameObjects.Graphics {
+    const pot = this.add.graphics().setDepth(5);
+    pot.fillStyle(0x7a3927, 1); pot.fillEllipse(px, py + 7, 42, 44);
+    pot.fillStyle(0xb66a43, 1); pot.fillEllipse(px, py + 2, 34, 34);
+    pot.fillStyle(0x5a2b22, 1); pot.fillRoundedRect(px - 13, py - 20, 26, 9, 3);
+    pot.fillStyle(0xc93038, 1); pot.fillRoundedRect(px - 17, py - 25, 34, 8, 3);
+    pot.fillTriangle(px + 9, py - 23, px + 25, py - 31, px + 19, py - 17);
+    pot.fillTriangle(px - 8, py - 23, px - 24, py - 31, px - 18, py - 17);
+    pot.lineStyle(2, 0xe9a16c, 0.9); pot.strokeEllipse(px, py + 7, 42, 44);
+    return pot;
+  }
+
+  private explodeBomb(bomb: PlantUnit): void {
+    if (!this.plants.includes(bomb)) return;
+    const blast = this.add.circle(bomb.x, bomb.y, 18, 0xffa23a, 0.9).setStrokeStyle(4, 0xffe7a3).setDepth(12);
+    this.tweens.add({ targets: blast, radius: 92, alpha: 0, duration: 360, onComplete: () => blast.destroy() });
+    const reach = bomb.config.splashRadius ?? 1;
+    for (const ghost of [...this.ghosts]) {
+      const ghostCol = Math.floor((ghost.x - 158) / 104);
+      if (Math.abs(ghost.row - bomb.row) <= reach && Math.abs(ghostCol - bomb.col) <= reach) this.damageGhost(ghost, bomb.config.attackDamage);
+    }
+    this.removePlant(bomb);
+    this.game.events.emit('toast', 'ระเบิดอาคมทำงานแล้ว!');
+  }
+
+  /** Display height in px for a ghost sprite on the 83px lane grid. */
+  private static readonly GHOST_HEIGHT = 80;
+  private static readonly BOSS_HEIGHT = 124;
+
+  private makeArtSprite(key: string, x: number, y: number, height: number, fallbackEmoji: string, fallbackSize: number, depth: number): Phaser.GameObjects.Image | Phaser.GameObjects.Text {
+    if (this.textures.exists(key)) {
+      const image = this.add.image(x, y, key).setDepth(depth);
+      image.setScale(height / image.height);
+      return image;
+    }
+    return this.add.text(x, y, fallbackEmoji, { fontFamily: 'Apple Color Emoji, Segoe UI Emoji, sans-serif', fontSize: `${fallbackSize}px`, stroke: '#1c1831', strokeThickness: 3 }).setOrigin(0.5).setDepth(depth);
   }
 
   private spawnGhost(id: GhostId): void {
@@ -281,13 +321,11 @@ export class GameScene extends Phaser.Scene {
     const row = Math.floor(Math.random() * GAME_SETTINGS.gridRows);
     const x = 1150;
     const y = 154 + row * 83;
-    const ghostFrame = GHOST_FRAMES[id];
-    const sprite: Phaser.GameObjects.Image | Phaser.GameObjects.Text = this.textures.exists('ghost-atlas')
-      ? this.add.image(x, y, 'ghost-atlas', ghostFrame).setDisplaySize(config.id === 'pret' ? 68 : 58, config.id === 'khomot' ? 62 : 58).setDepth(6)
-      : this.add.text(x, y, config.emoji, { fontFamily: 'Apple Color Emoji, Segoe UI Emoji, sans-serif', fontSize: `${config.size}px`, stroke: '#1c1831', strokeThickness: 3 }).setOrigin(0.5).setDepth(6);
+    const sprite = this.makeArtSprite(ghostTextureKey(id), x, y, GameScene.GHOST_HEIGHT, config.emoji, config.size, 6);
     sprite.setData('hpBar', this.add.graphics().setDepth(7));
     this.tweens.add({ targets: sprite, angle: { from: -3, to: 3 }, duration: 520 + Math.round(Math.random() * 260), yoyo: true, repeat: -1, ease: 'Sine.inOut' });
-    this.ghosts.push({ config, row, x, y, hp: config.hp, sprite, baseScaleX: sprite.scaleX, baseScaleY: sprite.scaleY, slowUntil: 0, lastAttack: 0 });
+    const now = this.simulationTime;
+    this.ghosts.push({ config, row, x, y, hp: config.hp, sprite, baseScaleX: sprite.scaleX, baseScaleY: sprite.scaleY, slowUntil: 0, lastAttack: 0, nextAbilityAt: now + this.firstAbilityDelay(config), abilityUntil: 0, vanishUsed: false });
     this.spawned += 1;
     this.pushStats();
   }
@@ -296,12 +334,12 @@ export class GameScene extends Phaser.Scene {
     const row = Math.floor(Math.random() * GAME_SETTINGS.gridRows);
     const x = 1150;
     const y = 154 + row * 83;
-    const sprite = this.add.text(x, y, boss.emoji, { fontFamily: 'Apple Color Emoji, Segoe UI Emoji, sans-serif', fontSize: '58px', stroke: '#ffdf8a', strokeThickness: 5 }).setOrigin(0.5).setDepth(10);
+    const sprite = this.makeArtSprite(bossTextureKey(boss.art), x, y, GameScene.BOSS_HEIGHT, boss.emoji, 58, 10);
     sprite.setData('hpBar', this.add.graphics().setDepth(11));
-    this.tweens.add({ targets: sprite, angle: { from: -5, to: 5 }, scaleX: { from: 0.96, to: 1.04 }, duration: 420, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
+    this.tweens.add({ targets: sprite, angle: { from: -4, to: 4 }, duration: 420, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
     sprite.setData('bossName', this.add.text(x, y - 49, boss.name, { fontFamily: 'Tahoma, Arial, sans-serif', fontSize: '15px', color: '#ffe7a3', fontStyle: 'bold', stroke: '#20132c', strokeThickness: 4 }).setOrigin(0.5).setDepth(12));
     const config: GhostConfig = { id: 'pret', name: boss.name, emoji: boss.emoji, hp: boss.hp, speed: boss.speed, damage: boss.damage, reward: boss.reward, description: boss.description, size: 58 };
-    this.ghosts.push({ config, row, x, y, hp: boss.hp, sprite, baseScaleX: sprite.scaleX, baseScaleY: sprite.scaleY, slowUntil: 0, lastAttack: 0, boss, bossAbilityElapsed: 0, tigerForm: false });
+    this.ghosts.push({ config, row, x, y, hp: boss.hp, sprite, baseScaleX: sprite.scaleX, baseScaleY: sprite.scaleY, slowUntil: 0, lastAttack: 0, boss, bossAbilityElapsed: 0, tigerForm: false, nextAbilityAt: Number.POSITIVE_INFINITY, abilityUntil: 0, vanishUsed: false });
     this.spawned += 1;
     this.game.events.emit('toast', `⚠ บอสปรากฏตัว: ${boss.name}!`);
     this.cameras.main.shake(350, 0.006);
@@ -309,12 +347,13 @@ export class GameScene extends Phaser.Scene {
   }
 
   private updatePlant(plant: PlantUnit, now: number): void {
-    if (plant.poisonUntil > now && plant.poisonDamage > 0 && now >= plant.nextPoisonTick) {
-      plant.nextPoisonTick = now + plant.poisonIntervalMs;
-      this.damagePlant(plant, plant.poisonDamage);
-      if (!this.plants.includes(plant)) return;
-    } else if (plant.poisonUntil <= now) {
-      plant.poisonDamage = 0;
+    if (plant.explodeAt !== undefined) {
+      if (now >= plant.explodeAt) this.explodeBomb(plant);
+      return;
+    }
+    const charmed = plant.charmedUntil > now;
+    if (plant.sprite instanceof Phaser.GameObjects.Image) {
+      if (charmed) plant.sprite.setTint(0xff9be6); else plant.sprite.clearTint();
     }
 
     const hpBar = plant.sprite.getData('hpBar') as Phaser.GameObjects.Graphics | undefined;
@@ -332,56 +371,114 @@ export class GameScene extends Phaser.Scene {
       this.game.events.emit('toast', `กุมารวิญญาณสร้างพลังอาคม +${manaGain}`);
       this.pushStats();
     }
-    if (!plant.config.attackDamage || now - plant.lastAction < plant.config.attackMs) return;
-    const target = this.ghosts.find((g) => g.row === plant.row && g.x < plant.x + plant.config.attackRange && g.x > plant.x + 15);
+    if (charmed) return;
+    // Headless ghost (fear): protectors nearby attack at half speed.
+    const afraid = this.ghosts.some((g) => g.config.ability === 'fear' && Math.hypot(g.x - plant.x, g.y - plant.y) <= GHOST_ABILITY.fearRadius);
+    const attackMs = plant.config.attackMs * (afraid ? GHOST_ABILITY.fearAttackSlowdown : 1);
+    if (!plant.config.attackDamage || now - plant.lastAction < attackMs) return;
+    const target = this.ghosts.find((g) => g.row === plant.row && g.x < plant.x + plant.config.attackRange && g.x > plant.x + 15 && !isGhostUntargetable(g.config.ability, g.abilityUntil, now));
     if (!target) return;
     plant.lastAction = now;
-    const circle = this.add.circle(plant.x + 22, plant.y - 7, plant.config.id === 'fireLotus' ? 10 : 6, plant.config.id === 'fireLotus' ? 0xff8c55 : 0x9aebff).setStrokeStyle(2, 0xe7fcff).setDepth(8);
+    const circle = this.add.circle(plant.x + 22, plant.y - 7, 6, afraid ? 0xb7a9d6 : 0x9aebff).setStrokeStyle(2, 0xe7fcff).setDepth(8);
     this.projectiles.push({ circle, x: plant.x + 22, y: plant.y - 7, target, speed: 420, damage: plant.config.attackDamage, splash: plant.config.splashRadius ?? 0, slowMs: plant.config.slowMs });
   }
 
+  private firstAbilityDelay(config: GhostConfig): number {
+    switch (config.ability) {
+      case 'camouflage': return 3000;
+      case 'lunge': return GHOST_ABILITY.lungeEveryMs;
+      case 'laneHop': return GHOST_ABILITY.laneHopEveryMs;
+      case 'charm': return 2500;
+      case 'smoke': return 2500;
+      default: return Number.POSITIVE_INFINITY;
+    }
+  }
+
+  private nearestPlantAhead(ghost: GhostUnit): PlantUnit | undefined {
+    return this.plants
+      .filter((p) => p.row === ghost.row && p.x < ghost.x)
+      .sort((a, b) => b.x - a.x)[0];
+  }
+
+  /** Abilities from the development plan. Untargetable states are checked by plants and projectiles. */
+  private updateGhostAbility(ghost: GhostUnit, now: number): void {
+    const ability = ghost.config.ability;
+    if (!ability) return;
+    // Phrong's vanish is triggered from damageGhost; only the visual state is updated here.
+    if (ability !== 'vanish' && now >= ghost.nextAbilityAt) {
+      if (ability === 'camouflage') {
+        ghost.abilityUntil = now + GHOST_ABILITY.camouflageMs;
+        ghost.nextAbilityAt = now + GHOST_ABILITY.camouflageEveryMs;
+        this.floatLabel(ghost, 'อำพราง', '#b9e48a');
+      } else if (ability === 'smoke') {
+        ghost.abilityUntil = now + GHOST_ABILITY.smokeMs;
+        ghost.nextAbilityAt = now + GHOST_ABILITY.smokeEveryMs;
+        this.floatLabel(ghost, 'ร่างควัน', '#9fc3ff');
+      } else if (ability === 'lunge') {
+        ghost.nextAbilityAt = now + GHOST_ABILITY.lungeEveryMs;
+        const ahead = this.nearestPlantAhead(ghost);
+        const limit = ahead ? ahead.x + 30 : -Infinity;
+        const targetX = Math.max(limit, ghost.x - GHOST_ABILITY.lungeDistance);
+        if (targetX < ghost.x - 4) {
+          ghost.x = targetX;
+          this.tweens.add({ targets: ghost.sprite, x: targetX, duration: 220, ease: 'Quad.out' });
+          this.floatLabel(ghost, 'ก้าวยาว!', '#ffd38a');
+        }
+      } else if (ability === 'laneHop') {
+        const lowHealth = ghost.hp <= ghost.config.hp * 0.5;
+        ghost.nextAbilityAt = now + (lowHealth ? GHOST_ABILITY.laneHopLowHpEveryMs : GHOST_ABILITY.laneHopEveryMs);
+        const rows = [ghost.row - 1, ghost.row + 1].filter((row) => row >= 0 && row < GAME_SETTINGS.gridRows);
+        if (rows.length) {
+          ghost.row = rows[Math.floor(Math.random() * rows.length)];
+          ghost.y = 154 + ghost.row * 83;
+          ghost.sprite.setY(ghost.y);
+          this.floatLabel(ghost, '↟', '#ffe5b0');
+        }
+      } else if (ability === 'charm') {
+        const victims = this.plants.filter((p) => p.row === ghost.row && p.x < ghost.x && ghost.x - p.x <= GHOST_ABILITY.charmRange);
+        if (victims.length) {
+          ghost.nextAbilityAt = now + GHOST_ABILITY.charmEveryMs;
+          for (const plant of victims) plant.charmedUntil = Math.max(plant.charmedUntil, now + GHOST_ABILITY.charmMs);
+          this.floatLabel(ghost, 'ร่ายรำสะกด!', '#ffb3ec');
+        } else ghost.nextAbilityAt = now + 500;
+      }
+    }
+    const hidden = isGhostUntargetable(ability, ghost.abilityUntil, now);
+    const smoking = ability === 'smoke' && ghost.abilityUntil > now;
+    ghost.sprite.setAlpha(hidden ? 0.22 : smoking ? 0.55 : 1);
+  }
+
+  private floatLabel(ghost: GhostUnit, text: string, color: string): void {
+    const label = this.add.text(ghost.x, ghost.y - 46, text, { fontFamily: 'Tahoma, Arial, sans-serif', fontSize: '14px', color, fontStyle: 'bold', stroke: '#1b1426', strokeThickness: 3 }).setOrigin(0.5).setDepth(14);
+    this.tweens.add({ targets: label, y: label.y - 22, alpha: 0, duration: 700, onComplete: () => label.destroy() });
+  }
+
   private updateGhost(ghost: GhostUnit, now: number, delta: number): void {
-    if (ghost.boss) this.updateBossAbility(ghost, delta);
-    const hpRatio = ghost.hp / ghost.config.hp;
-    const enraged = Boolean(ghost.config.enrageBelowHpRatio && hpRatio <= ghost.config.enrageBelowHpRatio);
-    const damageMultiplier = enraged ? ghost.config.enrageDamageMultiplier ?? 1 : 1;
-    const auraMultiplier = this.ghosts.reduce((best, other) => {
-      if (other === ghost || !other.config.speedAuraRadius) return best;
-      const distance = Math.hypot(other.x - ghost.x, other.y - ghost.y);
-      if (distance <= other.config.speedAuraRadius) return Math.max(best, other.config.speedAuraMultiplier ?? 1.25);
-      return best;
-    }, 1);
-    const blocker = this.plants.find((p) => p.row === ghost.row && Math.abs(p.x - ghost.x) < 30 && (!ghost.config.flying || p.config.id !== 'ward'));
+    if (ghost.boss) this.updateBossAbility(ghost, delta, now);
+    else this.updateGhostAbility(ghost, now);
+    if (!this.ghosts.includes(ghost)) return;
+    // Krasue floats over the ward pillar only; Krahang flies over every protector.
+    const blocker = ghost.config.flyOverAll ? undefined : this.plants.find((p) => p.row === ghost.row && Math.abs(p.x - ghost.x) < 30 && (!ghost.config.flying || p.config.id !== 'ward'));
     if (blocker) {
       if (now - ghost.lastAttack > 920) {
         ghost.lastAttack = now;
-        // Keep the idle animation in control of rotation; use a brief alpha flash for hit feedback.
-        ghost.sprite.setAlpha(0.68);
-        this.time.delayedCall(100, () => { if (ghost.sprite.active) ghost.sprite.setAlpha(1); });
-        this.damagePlant(blocker, Math.max(1, Math.round(ghost.config.damage * damageMultiplier)));
-        if (this.plants.includes(blocker) && ghost.config.poisonDamage) {
-          const wasUnpoisoned = blocker.poisonUntil <= now;
-          blocker.poisonDamage = wasUnpoisoned ? ghost.config.poisonDamage : Math.max(blocker.poisonDamage, ghost.config.poisonDamage);
-          blocker.poisonIntervalMs = ghost.config.poisonIntervalMs ?? 1000;
-          blocker.poisonUntil = Math.max(blocker.poisonUntil, now + (ghost.config.poisonDurationMs ?? 3000));
-          if (wasUnpoisoned) {
-            blocker.nextPoisonTick = now + blocker.poisonIntervalMs;
-            this.game.events.emit('toast', 'ผู้พิทักษ์ติดพิษจากผีโพง!');
-          }
+        // Lunge forward briefly as the attack animation.
+        this.tweens.add({ targets: ghost.sprite, x: ghost.x - 10, duration: 110, yoyo: true, ease: 'Quad.out' });
+        const damage = Math.min(blocker.hp, ghost.config.damage);
+        this.damagePlant(blocker, ghost.config.damage);
+        if (ghost.config.ability === 'lifesteal' && damage > 0) {
+          ghost.hp = Math.min(ghost.config.hp, ghost.hp + damage);
+          this.floatLabel(ghost, `+${damage}`, '#8df2a8');
         }
       }
     } else {
       const slowFactor = ghost.slowUntil > now ? 0.43 : 1;
-      const enrageSpeed = enraged ? ghost.config.enrageSpeedMultiplier ?? 1 : 1;
-      ghost.x -= ghost.config.speed * auraMultiplier * enrageSpeed * slowFactor * delta / 1000;
+      ghost.x -= ghost.config.speed * slowFactor * delta / 1000;
       ghost.sprite.setX(ghost.x);
       if (ghost.x < 80) {
-        this.health -= Math.max(1, Math.round(ghost.config.damage * damageMultiplier));
+        this.health -= baseDamageForLeak(Boolean(ghost.boss));
         this.health = Math.max(0, this.health);
-        const hpBar = ghost.sprite.getData('hpBar') as Phaser.GameObjects.Graphics | undefined;
-        hpBar?.destroy();
-        (ghost.sprite.getData('bossName') as Phaser.GameObjects.Text | undefined)?.destroy();
-        ghost.sprite.destroy();
+        this.destroyGhostSprite(ghost);
         this.ghosts = this.ghosts.filter((g) => g !== ghost);
         this.game.events.emit('toast', `ผีผ่านฐาน! พลังชีวิตเหลือ ${this.health}`);
         this.pushStats();
@@ -389,18 +486,26 @@ export class GameScene extends Phaser.Scene {
       }
     }
     const hpBar = ghost.sprite.getData('hpBar') as Phaser.GameObjects.Graphics | undefined;
-    if (hpBar) { const width = ghost.boss ? 110 : 40; const height = ghost.boss ? 9 : 5; const barY = ghost.y - (ghost.boss ? 42 : 27); hpBar.clear(); hpBar.fillStyle(0x2a2030).fillRoundedRect(ghost.x - width / 2, barY, width, height, 3); hpBar.fillStyle(ghost.boss ? 0xffbd55 : 0xf27683).fillRoundedRect(ghost.x - width / 2, barY, width * Math.max(0, ghost.hp) / ghost.config.hp, height, 3); }
-    (ghost.sprite.getData('bossName') as Phaser.GameObjects.Text | undefined)?.setPosition(ghost.x, ghost.y - 59);
+    if (hpBar) { const width = ghost.boss ? 110 : 40; const height = ghost.boss ? 9 : 5; const barY = ghost.y - Math.round(ghost.sprite.displayHeight / 2) - 6; hpBar.clear(); hpBar.fillStyle(0x2a2030).fillRoundedRect(ghost.x - width / 2, barY, width, height, 3); hpBar.fillStyle(ghost.boss ? 0xffbd55 : 0xf27683).fillRoundedRect(ghost.x - width / 2, barY, width * Math.max(0, ghost.hp) / ghost.config.hp, height, 3); }
+    (ghost.sprite.getData('bossName') as Phaser.GameObjects.Text | undefined)?.setPosition(ghost.x, ghost.y - Math.round(ghost.sprite.displayHeight / 2) - 20);
   }
 
-  private updateBossAbility(ghost: GhostUnit, delta: number): void {
+  private updateBossAbility(ghost: GhostUnit, delta: number, now: number): void {
     ghost.bossAbilityElapsed = (ghost.bossAbilityElapsed ?? 0) + delta;
+    if (ghost.boss?.ability === 'charm' && ghost.bossAbilityElapsed >= 6000) {
+      ghost.bossAbilityElapsed = 0;
+      const victims = this.plants.filter((p) => p.row === ghost.row);
+      for (const plant of victims) plant.charmedUntil = Math.max(plant.charmedUntil, now + 3000);
+      const ring = this.add.circle(ghost.x, ghost.y, 30, 0xff9be6, 0.16).setStrokeStyle(4, 0xffc4f0, 0.9).setDepth(15);
+      this.tweens.add({ targets: ring, scaleX: 14, scaleY: 1.4, alpha: 0, duration: 700, onComplete: () => ring.destroy() });
+      this.game.events.emit('toast', '💃 นางรำร่ายรำสะกด! ผู้พิทักษ์ในเลนหยุดโจมตี 3 วินาที');
+    }
     if (ghost.boss?.ability === 'waterSurge' && ghost.bossAbilityElapsed >= 3200) {
       ghost.bossAbilityElapsed = 0;
       const pulse = this.add.circle(640, 330, 30, 0x45c9ff, 0.18).setStrokeStyle(5, 0x8ce8ff, 0.85).setDepth(15);
       this.tweens.add({ targets: pulse, scaleX: 19, scaleY: 8, alpha: 0, duration: 650, onComplete: () => pulse.destroy() });
-      for (const plant of [...this.plants]) this.damagePlant(plant, ghost.boss.stage === 6 ? 14 : 7);
-      this.game.events.emit('toast', ghost.boss.stage === 6 ? '🌊 ผีพรายปล่อยคลื่นน้ำโจมตีผู้พิทักษ์ทั่วแผนที่!' : '💃 นางรำปล่อยคลื่นอาคมทั่วสนาม!');
+      for (const plant of [...this.plants]) this.damagePlant(plant, 14);
+      this.game.events.emit('toast', '🌊 ผีพรายปล่อยคลื่นน้ำโจมตีผู้พิทักษ์ทั่วแผนที่!');
     }
 
   }
@@ -422,7 +527,7 @@ export class GameScene extends Phaser.Scene {
 
   private updateProjectiles(delta: number): void {
     for (const bullet of [...this.projectiles]) {
-      if (!bullet.target.sprite.active || !this.ghosts.includes(bullet.target)) {
+      if (!bullet.target.sprite.active || !this.ghosts.includes(bullet.target) || isGhostUntargetable(bullet.target.config.ability, bullet.target.abilityUntil, this.simulationTime)) {
         bullet.circle.destroy(); this.projectiles = this.projectiles.filter((p) => p !== bullet); continue;
       }
       const dx = bullet.target.x - bullet.x; const dy = bullet.target.y - bullet.y;
@@ -441,8 +546,16 @@ export class GameScene extends Phaser.Scene {
 
   private damageGhost(ghost: GhostUnit, damage: number): void {
     if (!this.ghosts.includes(ghost)) return;
-    const reduction = Math.min(0.8, Math.max(0, ghost.config.damageReduction ?? 0));
-    ghost.hp -= Math.max(1, Math.round(damage * (1 - reduction)));
+    const now = this.simulationTime;
+    if (isGhostUntargetable(ghost.config.ability, ghost.abilityUntil, now)) return;
+    ghost.hp -= smokeDamage(damage, ghost.config.ability === 'smoke' && ghost.abilityUntil > now);
+    // Phrong vanishes the moment it drops to half health, so later hits in the same frame miss.
+    if (ghost.config.ability === 'vanish' && !ghost.vanishUsed && ghost.hp > 0 && ghost.hp <= ghost.config.hp * GHOST_ABILITY.vanishBelowHpRatio) {
+      ghost.vanishUsed = true;
+      ghost.abilityUntil = now + GHOST_ABILITY.vanishMs;
+      ghost.sprite.setAlpha(0.22);
+      this.floatLabel(ghost, 'หายตัว!', '#c9b6ff');
+    }
     ghost.sprite.setScale(ghost.baseScaleX * 1.12, ghost.baseScaleY * 1.12); this.time.delayedCall(80, () => { if (ghost.sprite.active) ghost.sprite.setScale(ghost.baseScaleX, ghost.baseScaleY); });
     if (ghost.hp <= 0 && ghost.boss?.ability === 'tigerShift' && !ghost.tigerForm) {
       ghost.tigerForm = true;
@@ -450,38 +563,43 @@ export class GameScene extends Phaser.Scene {
       ghost.config.hp = ghost.hp;
       ghost.config.speed = 18;
       ghost.config.damage = 42;
-      const tigerSprite = ghost.sprite as Phaser.GameObjects.Text;
-      tigerSprite.setText('🐅');
-      tigerSprite.setFontSize('68px');
+      if (ghost.sprite instanceof Phaser.GameObjects.Image && this.textures.exists(bossTextureKey('saming-tiger'))) {
+        ghost.sprite.setTexture(bossTextureKey('saming-tiger'));
+        ghost.sprite.setScale(GameScene.BOSS_HEIGHT / ghost.sprite.height);
+      } else if (ghost.sprite instanceof Phaser.GameObjects.Text) {
+        ghost.sprite.setText('🐅').setFontSize('68px');
+      }
+      ghost.baseScaleX = ghost.sprite.scaleX; ghost.baseScaleY = ghost.sprite.scaleY;
       this.cameras.main.shake(500, 0.009);
       this.game.events.emit('toast', '🐅 ผีสมิงฟื้นคืนชีพเป็นร่างเสือ! กำจัดร่างเสือเพื่อชนะบอส');
       for (let i = 0; i < 2; i += 1) {
         const row = (ghost.row + i + 1) % GAME_SETTINGS.gridRows;
         const x = Math.min(1125, ghost.x + 35 + i * 24);
         const y = 154 + row * 83;
-        const minionSprite = this.add.text(x, y, '🐅', { fontFamily: 'Apple Color Emoji, Segoe UI Emoji, sans-serif', fontSize: '30px', stroke: '#38251b', strokeThickness: 3 }).setOrigin(0.5).setDepth(6);
+        const minionSprite = this.makeArtSprite(bossTextureKey('saming-tiger'), x, y, 64, '🐅', 30, 6);
+        minionSprite.setData('hpBar', this.add.graphics().setDepth(7));
         const minionConfig: GhostConfig = { id: 'kongkoi', name: 'เสือบริวาร', emoji: '🐅', hp: 95, speed: 23, damage: 9, reward: 0, description: 'เสือบริวารที่ผีสมิงเรียกมา', size: 30 };
-        this.ghosts.push({ config: minionConfig, row, x, y, hp: minionConfig.hp, sprite: minionSprite, baseScaleX: minionSprite.scaleX, baseScaleY: minionSprite.scaleY, slowUntil: 0, lastAttack: 0 });
+        this.ghosts.push({ config: minionConfig, row, x, y, hp: minionConfig.hp, sprite: minionSprite, baseScaleX: minionSprite.scaleX, baseScaleY: minionSprite.scaleY, slowUntil: 0, lastAttack: 0, nextAbilityAt: Number.POSITIVE_INFINITY, abilityUntil: 0, vanishUsed: false });
       }
       return;
     }
     if (ghost.hp <= 0) {
-      if (ghost.config.deathBurstDamage && ghost.config.deathBurstRadius) {
-        const radius = ghost.config.deathBurstRadius;
-        const burst = this.add.circle(ghost.x, ghost.y, 14, 0xff8c55, 0.45).setStrokeStyle(3, 0xffcf8c).setDepth(9);
-        this.tweens.add({ targets: burst, scaleX: radius / 14, scaleY: radius / 14, alpha: 0, duration: 240, onComplete: () => burst.destroy() });
-        const nearby = this.plants.filter((plant) => Math.hypot(plant.x - ghost.x, plant.y - ghost.y) <= radius);
-        for (const plant of nearby) this.damagePlant(plant, ghost.config.deathBurstDamage);
-        if (nearby.length) this.game.events.emit('toast', 'ผีตายโหงระเบิด! ผู้พิทักษ์ใกล้เคียงได้รับความเสียหาย');
-      }
       this.kills += 1; this.score += ghost.config.reward;
       this.mana += GAME_SETTINGS.killManaReward;
       this.game.events.emit('toast', `กำจัดผีได้ +${GAME_SETTINGS.killManaReward} พลังอาคม`);
-      const hpBar = ghost.sprite.getData('hpBar') as Phaser.GameObjects.Graphics | undefined;
-      hpBar?.destroy(); (ghost.sprite.getData('bossName') as Phaser.GameObjects.Text | undefined)?.destroy(); ghost.sprite.destroy();
       this.ghosts = this.ghosts.filter((g) => g !== ghost);
+      this.destroyGhostSprite(ghost, true);
       this.pushStats();
     }
+  }
+
+  /** Removes a ghost's sprite and attachments; `dying` plays a short fade-and-sink death animation. */
+  private destroyGhostSprite(ghost: GhostUnit, dying = false): void {
+    (ghost.sprite.getData('hpBar') as Phaser.GameObjects.Graphics | undefined)?.destroy();
+    (ghost.sprite.getData('bossName') as Phaser.GameObjects.Text | undefined)?.destroy();
+    if (!dying) { ghost.sprite.destroy(); return; }
+    this.tweens.killTweensOf(ghost.sprite);
+    this.tweens.add({ targets: ghost.sprite, alpha: 0, y: ghost.y + 14, scaleX: ghost.baseScaleX * 0.7, scaleY: ghost.baseScaleY * 0.7, duration: 320, onComplete: () => ghost.sprite.destroy() });
   }
 
   private requestQuiz(): void {
