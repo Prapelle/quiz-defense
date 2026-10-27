@@ -1,5 +1,5 @@
 export type PlantId = 'kumarn' | 'lotus' | 'bindLotus' | 'ward' | 'fireLotus';
-export type GhostId = 'tanian' | 'krasue' | 'pret';
+export type GhostId = 'tanian' | 'krasue' | 'pret' | 'krahang' | 'pop' | 'kongkoi' | 'phong' | 'maemai' | 'taihong' | 'khomot';
 
 export interface PlantConfig {
   id: PlantId;
@@ -30,6 +30,22 @@ export interface GhostConfig {
   reward: number;
   description: string;
   flying?: boolean;
+  /** Speed and attack multipliers while below a health ratio. */
+  enrageBelowHpRatio?: number;
+  enrageSpeedMultiplier?: number;
+  enrageDamageMultiplier?: number;
+  /** Poison damage over time applied to protectors on a hit. */
+  poisonDamage?: number;
+  poisonIntervalMs?: number;
+  poisonDurationMs?: number;
+  /** Nearby ghosts move faster while inside this aura. */
+  speedAuraRadius?: number;
+  speedAuraMultiplier?: number;
+  /** Damage applied to nearby protectors when this ghost is defeated. */
+  deathBurstDamage?: number;
+  deathBurstRadius?: number;
+  /** Incoming projectile damage reduction, clamped by gameplay code. */
+  damageReduction?: number;
   size: number;
 }
 
@@ -64,12 +80,19 @@ export const PLANTS: PlantConfig[] = [
 
 export const GHOSTS: GhostConfig[] = [
   { id: 'tanian', name: 'ผีตานี', emoji: '👻', hp: 90, speed: 20, damage: 5, reward: 15, description: 'ตัวไว ชอบลอบเข้าหาฐาน', size: 27 },
-  { id: 'krasue', name: 'ผีกระสือ', emoji: '🔮', hp: 120, speed: 15, damage: 9, reward: 20, description: 'ลอยข้ามเสาหลักอาคมได้', flying: true, size: 30 },
-  { id: 'pret', name: 'ผีเปรต', emoji: '👹', hp: 260, speed: 9, damage: 15, reward: 30, description: 'อึด เคลื่อนที่ช้า แต่รับความเสียหายได้นาน', size: 36 },
+  { id: 'krasue', name: 'ผีกระสือ', emoji: '🔮', hp: 120, speed: 15, damage: 9, reward: 20, description: 'ผีบิน ลอยข้ามเสาหลักอาคมได้', flying: true, size: 30 },
+  { id: 'pret', name: 'ผีเปรต', emoji: '👹', hp: 260, speed: 9, damage: 15, reward: 30, description: 'อึดมาก เคลื่อนที่ช้าแต่โจมตีรุนแรง', size: 36 },
+  { id: 'krahang', name: 'ผีกระหัง', emoji: '🪶', hp: 135, speed: 21, damage: 7, reward: 24, description: 'ผีบินที่เคลื่อนที่เร็ว ข้ามเสาหลักอาคมได้', flying: true, size: 31 },
+  { id: 'pop', name: 'ผีปอบ', emoji: '🦷', hp: 150, speed: 13, damage: 12, reward: 25, description: 'เมื่อพลังชีวิตเหลือครึ่งหนึ่ง จะโกรธและโจมตีเร็วแรงขึ้น', enrageBelowHpRatio: 0.5, enrageSpeedMultiplier: 1.5, enrageDamageMultiplier: 1.25, size: 31 },
+  { id: 'kongkoi', name: 'ผีกองกอย', emoji: '🦶', hp: 75, speed: 30, damage: 4, reward: 17, description: 'ตัวเล็กและวิ่งเร็วมาก แต่พลังชีวิตต่ำ', size: 25 },
+  { id: 'phong', name: 'ผีโพง', emoji: '🔥', hp: 115, speed: 16, damage: 7, reward: 22, description: 'การโจมตีปล่อยพิษ ทำให้ผู้พิทักษ์เสียพลังชีวิตต่อเนื่อง', poisonDamage: 3, poisonIntervalMs: 1000, poisonDurationMs: 3000, size: 29 },
+  { id: 'maemai', name: 'ผีแม่ม่าย', emoji: '👰', hp: 165, speed: 10, damage: 8, reward: 28, description: 'เพิ่มความเร็วให้ผีที่อยู่ใกล้กัน', speedAuraRadius: 160, speedAuraMultiplier: 1.3, size: 33 },
+  { id: 'taihong', name: 'ผีตายโหง', emoji: '💀', hp: 110, speed: 18, damage: 10, reward: 25, description: 'เมื่อถูกกำจัดจะระเบิด สร้างความเสียหายแก่ผู้พิทักษ์ใกล้เคียง', deathBurstDamage: 18, deathBurstRadius: 125, size: 31 },
+  { id: 'khomot', name: 'ผีโขมด', emoji: '🌫️', hp: 200, speed: 12, damage: 10, reward: 28, description: 'ร่างหมอกช่วยลดความเสียหายที่ได้รับ 25%', damageReduction: 0.25, size: 34 },
 ];
 
 export const STAGES = [
   { id: 1, name: 'หมู่บ้านใต้แสงจันทร์', subtitle: 'ฝึกตอบคำถามและวางแนวป้องกัน', difficulty: 'ง่าย', enemies: 10, waves: [3, 3, 4], waveBreakMs: 5000, spawnMs: 6500, allowedGhosts: ['tanian'] as GhostId[] },
-  { id: 2, name: 'ป่ากล้วยต้องคำสาป', subtitle: 'ผีตานีและผีกระสือเริ่มบุกพร้อมกัน', difficulty: 'ปานกลาง', enemies: 14, waves: [4, 4, 6], waveBreakMs: 4500, spawnMs: 5200, allowedGhosts: ['tanian', 'krasue'] as GhostId[] },
-  { id: 3, name: 'ประตูวัดร้าง', subtitle: 'ระวังผีเปรตผู้ทรงพลัง', difficulty: 'ยาก', enemies: 18, waves: [4, 6, 8], waveBreakMs: 3500, spawnMs: 4100, allowedGhosts: ['tanian', 'krasue', 'pret'] as GhostId[] },
+  { id: 2, name: 'ป่ากล้วยต้องคำสาป', subtitle: 'ผีบิน ผีพิษ และผีสายเร็วเริ่มบุก', difficulty: 'ปานกลาง', enemies: 14, waves: [4, 4, 6], waveBreakMs: 4500, spawnMs: 5200, allowedGhosts: ['tanian', 'krasue', 'krahang', 'kongkoi', 'phong'] as GhostId[] },
+  { id: 3, name: 'ประตูวัดร้าง', subtitle: 'เผชิญหน้าผีทั้งสิบชนิดและความสามารถพิเศษ', difficulty: 'ยาก', enemies: 18, waves: [4, 6, 8], waveBreakMs: 3500, spawnMs: 4100, allowedGhosts: ['tanian', 'krasue', 'pret', 'krahang', 'pop', 'kongkoi', 'phong', 'maemai', 'taihong', 'khomot'] as GhostId[] },
 ];

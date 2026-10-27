@@ -13,6 +13,11 @@ export const CHARACTER_FRAMES = {
   pret: 7,
 } as const;
 
+/** Only original atlas characters have baked sprite frames; new ghosts use offline emoji art. */
+export function hasCharacterFrame(id: string): id is keyof typeof CHARACTER_FRAMES {
+  return Object.prototype.hasOwnProperty.call(CHARACTER_FRAMES, id);
+}
+
 export const CHARACTER_ATLAS_ROOT_STYLE = {
   '--character-atlas': 'url(\"' + CHARACTER_ATLAS_DATA_URL + '\")',
 } as import('react').CSSProperties;

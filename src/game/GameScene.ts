@@ -19,7 +19,7 @@ export interface GameStats {
   stageName: string;
   status: 'playing' | 'won' | 'lost';
 }
-interface PlantUnit { config: PlantConfig; row: number; col: number; x: number; y: number; hp: number; sprite: Phaser.GameObjects.Image | Phaser.GameObjects.Text; lastAction: number; }
+interface PlantUnit { config: PlantConfig; row: number; col: number; x: number; y: number; hp: number; sprite: Phaser.GameObjects.Image | Phaser.GameObjects.Text; lastAction: number; poisonDamage: number; poisonUntil: number; poisonIntervalMs: number; nextPoisonTick: number; }
 interface GhostUnit { config: GhostConfig; row: number; x: number; y: number; hp: number; sprite: Phaser.GameObjects.Image | Phaser.GameObjects.Text; baseScaleX: number; baseScaleY: number; slowUntil: number; lastAttack: number; }
 interface Projectile { circle: Phaser.GameObjects.Arc; x: number; y: number; target: GhostUnit; speed: number; damage: number; splash: number; slowMs?: number; }
 
@@ -254,15 +254,17 @@ export class GameScene extends Phaser.Scene {
     this.mana -= config.cost;
     const px = 208 + col * 104;
     const py = 154 + row * 83;
-    const sprite: Phaser.GameObjects.Image | Phaser.GameObjects.Text = this.textures.exists('character-atlas')
-      ? this.add.image(px, py, 'character-atlas', CHARACTER_FRAMES[config.id]).setDisplaySize(config.id === 'ward' ? 60 : 56, 56).setDepth(5)
+    const hasPlantFrame = Object.prototype.hasOwnProperty.call(CHARACTER_FRAMES, config.id);
+    const plantFrame = hasPlantFrame ? CHARACTER_FRAMES[config.id] : 0;
+    const sprite: Phaser.GameObjects.Image | Phaser.GameObjects.Text = this.textures.exists('character-atlas') && hasPlantFrame
+      ? this.add.image(px, py, 'character-atlas', plantFrame).setDisplaySize(config.id === 'ward' ? 60 : 56, 56).setDepth(5)
       : this.add.text(px, py, config.emoji, { fontFamily: 'Apple Color Emoji, Segoe UI Emoji, sans-serif', fontSize: config.id === 'ward' ? '48px' : '42px', stroke: '#112236', strokeThickness: 2 }).setOrigin(0.5).setDepth(5);
     const ring = this.add.graphics().lineStyle(2, 0xf9d983, 0.7).strokeCircle(px, py + 6, 29).setDepth(4);
     const hpBar = this.add.graphics().setDepth(7);
     // Keep the placement ring and HP bar attached to the protector sprite.
     sprite.setData('ring', ring);
     sprite.setData('hpBar', hpBar);
-    this.plants.push({ config, row, col, x: px, y: py, hp: config.hp, sprite, lastAction: this.simulationTime });
+    this.plants.push({ config, row, col, x: px, y: py, hp: config.hp, sprite, lastAction: this.simulationTime, poisonDamage: 0, poisonUntil: 0, poisonIntervalMs: 1000, nextPoisonTick: 0 });
     this.pushStats();
   }
 
@@ -271,8 +273,9 @@ export class GameScene extends Phaser.Scene {
     const row = Math.floor(Math.random() * GAME_SETTINGS.gridRows);
     const x = 1150;
     const y = 154 + row * 83;
-    const ghostFrame = CHARACTER_FRAMES[id];
-    const sprite: Phaser.GameObjects.Image | Phaser.GameObjects.Text = this.textures.exists('character-atlas')
+    const hasGhostFrame = Object.prototype.hasOwnProperty.call(CHARACTER_FRAMES, id);
+    const ghostFrame = hasGhostFrame ? CHARACTER_FRAMES[id as keyof typeof CHARACTER_FRAMES] : 0;
+    const sprite: Phaser.GameObjects.Image | Phaser.GameObjects.Text = this.textures.exists('character-atlas') && hasGhostFrame
       ? this.add.image(x, y, 'character-atlas', ghostFrame).setDisplaySize(config.id === 'pret' ? 62 : 56, config.id === 'pret' ? 62 : 56).setDepth(6)
       : this.add.text(x, y, config.emoji, { fontFamily: 'Apple Color Emoji, Segoe UI Emoji, sans-serif', fontSize: `${config.size}px`, stroke: '#1c1831', strokeThickness: 3 }).setOrigin(0.5).setDepth(6);
     sprite.setData('hpBar', this.add.graphics().setDepth(7));
@@ -282,6 +285,14 @@ export class GameScene extends Phaser.Scene {
   }
 
   private updatePlant(plant: PlantUnit, now: number): void {
+    if (plant.poisonUntil > now && plant.poisonDamage > 0 && now >= plant.nextPoisonTick) {
+      plant.nextPoisonTick = now + plant.poisonIntervalMs;
+      this.damagePlant(plant, plant.poisonDamage);
+      if (!this.plants.includes(plant)) return;
+    } else if (plant.poisonUntil <= now) {
+      plant.poisonDamage = 0;
+    }
+
     const hpBar = plant.sprite.getData('hpBar') as Phaser.GameObjects.Graphics | undefined;
     if (hpBar) {
       const ratio = Math.max(0, Math.min(1, plant.hp / plant.config.hp));
@@ -306,24 +317,38 @@ export class GameScene extends Phaser.Scene {
   }
 
   private updateGhost(ghost: GhostUnit, now: number, delta: number): void {
+    const hpRatio = ghost.hp / ghost.config.hp;
+    const enraged = Boolean(ghost.config.enrageBelowHpRatio && hpRatio <= ghost.config.enrageBelowHpRatio);
+    const damageMultiplier = enraged ? ghost.config.enrageDamageMultiplier ?? 1 : 1;
+    const auraMultiplier = this.ghosts.reduce((best, other) => {
+      if (other === ghost || !other.config.speedAuraRadius) return best;
+      const distance = Math.hypot(other.x - ghost.x, other.y - ghost.y);
+      if (distance <= other.config.speedAuraRadius) return Math.max(best, other.config.speedAuraMultiplier ?? 1.25);
+      return best;
+    }, 1);
     const blocker = this.plants.find((p) => p.row === ghost.row && Math.abs(p.x - ghost.x) < 30 && (!ghost.config.flying || p.config.id !== 'ward'));
     if (blocker) {
       if (now - ghost.lastAttack > 920) {
         ghost.lastAttack = now;
-        blocker.hp -= ghost.config.damage;
-        blocker.sprite.setAlpha(0.62); this.time.delayedCall(100, () => blocker.sprite.active && blocker.sprite.setAlpha(1));
-        if (blocker.hp <= 0) {
-          const ring = blocker.sprite.getData('ring') as Phaser.GameObjects.Graphics | undefined;
-          const hpBar = blocker.sprite.getData('hpBar') as Phaser.GameObjects.Graphics | undefined;
-          ring?.destroy(); hpBar?.destroy(); blocker.sprite.destroy(); this.plants = this.plants.filter((p) => p !== blocker);
+        this.damagePlant(blocker, Math.max(1, Math.round(ghost.config.damage * damageMultiplier)));
+        if (this.plants.includes(blocker) && ghost.config.poisonDamage) {
+          const wasUnpoisoned = blocker.poisonUntil <= now;
+          blocker.poisonDamage = wasUnpoisoned ? ghost.config.poisonDamage : Math.max(blocker.poisonDamage, ghost.config.poisonDamage);
+          blocker.poisonIntervalMs = ghost.config.poisonIntervalMs ?? 1000;
+          blocker.poisonUntil = Math.max(blocker.poisonUntil, now + (ghost.config.poisonDurationMs ?? 3000));
+          if (wasUnpoisoned) {
+            blocker.nextPoisonTick = now + blocker.poisonIntervalMs;
+            this.game.events.emit('toast', 'ผู้พิทักษ์ติดพิษจากผีโพง!');
+          }
         }
       }
     } else {
       const slowFactor = ghost.slowUntil > now ? 0.43 : 1;
-      ghost.x -= ghost.config.speed * slowFactor * delta / 1000;
+      const enrageSpeed = enraged ? ghost.config.enrageSpeedMultiplier ?? 1 : 1;
+      ghost.x -= ghost.config.speed * auraMultiplier * enrageSpeed * slowFactor * delta / 1000;
       ghost.sprite.setX(ghost.x);
       if (ghost.x < 80) {
-        this.health -= ghost.config.damage;
+        this.health -= Math.max(1, Math.round(ghost.config.damage * damageMultiplier));
         this.health = Math.max(0, this.health);
         const hpBar = ghost.sprite.getData('hpBar') as Phaser.GameObjects.Graphics | undefined;
         hpBar?.destroy(); ghost.sprite.destroy();
@@ -335,6 +360,21 @@ export class GameScene extends Phaser.Scene {
     }
     const hpBar = ghost.sprite.getData('hpBar') as Phaser.GameObjects.Graphics | undefined;
     if (hpBar) { hpBar.clear(); hpBar.fillStyle(0x2a2030).fillRoundedRect(ghost.x - 20, ghost.y - 27, 40, 5, 2); hpBar.fillStyle(0xf27683).fillRoundedRect(ghost.x - 20, ghost.y - 27, 40 * Math.max(0, ghost.hp) / ghost.config.hp, 5, 2); }
+  }
+
+  private damagePlant(plant: PlantUnit, damage: number): void {
+    if (!this.plants.includes(plant)) return;
+    plant.hp -= damage;
+    plant.sprite.setAlpha(0.62);
+    this.time.delayedCall(100, () => { if (plant.sprite.active) plant.sprite.setAlpha(1); });
+    if (plant.hp <= 0) this.removePlant(plant);
+  }
+
+  private removePlant(plant: PlantUnit): void {
+    const ring = plant.sprite.getData('ring') as Phaser.GameObjects.Graphics | undefined;
+    const hpBar = plant.sprite.getData('hpBar') as Phaser.GameObjects.Graphics | undefined;
+    ring?.destroy(); hpBar?.destroy(); plant.sprite.destroy();
+    this.plants = this.plants.filter((item) => item !== plant);
   }
 
   private updateProjectiles(delta: number): void {
@@ -358,9 +398,18 @@ export class GameScene extends Phaser.Scene {
 
   private damageGhost(ghost: GhostUnit, damage: number): void {
     if (!this.ghosts.includes(ghost)) return;
-    ghost.hp -= damage;
+    const reduction = Math.min(0.8, Math.max(0, ghost.config.damageReduction ?? 0));
+    ghost.hp -= Math.max(1, Math.round(damage * (1 - reduction)));
     ghost.sprite.setScale(ghost.baseScaleX * 1.12, ghost.baseScaleY * 1.12); this.time.delayedCall(80, () => { if (ghost.sprite.active) ghost.sprite.setScale(ghost.baseScaleX, ghost.baseScaleY); });
     if (ghost.hp <= 0) {
+      if (ghost.config.deathBurstDamage && ghost.config.deathBurstRadius) {
+        const radius = ghost.config.deathBurstRadius;
+        const burst = this.add.circle(ghost.x, ghost.y, 14, 0xff8c55, 0.45).setStrokeStyle(3, 0xffcf8c).setDepth(9);
+        this.tweens.add({ targets: burst, scaleX: radius / 14, scaleY: radius / 14, alpha: 0, duration: 240, onComplete: () => burst.destroy() });
+        const nearby = this.plants.filter((plant) => Math.hypot(plant.x - ghost.x, plant.y - ghost.y) <= radius);
+        for (const plant of nearby) this.damagePlant(plant, ghost.config.deathBurstDamage);
+        if (nearby.length) this.game.events.emit('toast', 'ผีตายโหงระเบิด! ผู้พิทักษ์ใกล้เคียงได้รับความเสียหาย');
+      }
       this.kills += 1; this.score += ghost.config.reward;
       this.mana += GAME_SETTINGS.killManaReward;
       this.game.events.emit('toast', `กำจัดผีได้ +${GAME_SETTINGS.killManaReward} พลังอาคม`);
